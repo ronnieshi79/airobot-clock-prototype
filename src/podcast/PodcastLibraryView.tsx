@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { History, Play, Book, Newspaper, BookOpen, CheckCircle2, Clock, Filter, Plus, Star, Rss, MessageSquare } from 'lucide-react';
+import { History, Play, Video, Volume2, FileText, CheckCircle2, Clock, Filter, Plus, Star, Rss, MessageSquare } from 'lucide-react';
 import { PodcastEpisode } from './usePodcast';
 import { MainCategory, SubCategory, ScheduleItem } from '../types';
 
@@ -8,7 +8,7 @@ interface PodcastLibraryViewProps {
   isDarkMode: boolean;
   episodes: PodcastEpisode[];
   onSelectEpisode: (episode: PodcastEpisode) => void;
-  onGenerate: (type: 'story' | 'news' | 'knowledge') => void;
+  onGenerate: (type: 'video' | 'audio' | 'text') => void;
   time: Date;
   schedules: ScheduleItem[];
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
@@ -26,15 +26,15 @@ export const PodcastLibraryView: React.FC<PodcastLibraryViewProps> = ({
   const [activeFilter, setActiveFilter] = useState<string>('all');
 
   const typeIcons = {
-    story: <Book size={16} className="text-orange-500" />,
-    news: <Newspaper size={16} className="text-emerald-500" />,
-    knowledge: <BookOpen size={16} className="text-indigo-500" />
+    video: <Video size={16} className="text-pink-500" />,
+    audio: <Volume2 size={16} className="text-sky-500" />,
+    text: <FileText size={16} className="text-emerald-500" />
   };
 
   const typeLabels = {
-    story: '故事',
-    news: '资讯',
-    knowledge: '知识'
+    video: '视频',
+    audio: '音频',
+    text: '图文'
   };
 
   const unplayedEpisodes = episodes.filter(e => !e.played);
@@ -46,7 +46,7 @@ export const PodcastLibraryView: React.FC<PodcastLibraryViewProps> = ({
   let filteredEpisodes = [...episodes];
   if (activeFilter === 'favorite') {
     filteredEpisodes = filteredEpisodes.filter(e => e.favorite);
-  } else if (['story', 'news', 'knowledge'].includes(activeFilter)) {
+  } else if (['video', 'audio', 'text'].includes(activeFilter)) {
     filteredEpisodes = filteredEpisodes.filter(e => e.type === activeFilter);
   } else if (activeFilter !== 'all') {
     filteredEpisodes = filteredEpisodes.filter(e => e.channelName === activeFilter);
@@ -66,8 +66,8 @@ export const PodcastLibraryView: React.FC<PodcastLibraryViewProps> = ({
         <div className="flex items-center gap-2">
           {typeIcons[episode.type]}
           <span className={`text-[10px] font-black uppercase tracking-wider ${
-            episode.type === 'story' ? 'text-orange-500' : 
-            episode.type === 'news' ? 'text-emerald-500' : 'text-indigo-500'
+            episode.type === 'video' ? 'text-pink-500' : 
+            episode.type === 'audio' ? 'text-sky-500' : 'text-emerald-500'
           }`}>
             {typeLabels[episode.type]}
           </span>
@@ -138,7 +138,7 @@ export const PodcastLibraryView: React.FC<PodcastLibraryViewProps> = ({
             <History size={20} />
           </div>
           <h2 className={`text-2xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-            节目库
+            播客库
           </h2>
         </div>
         <p className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -212,7 +212,7 @@ export const PodcastLibraryView: React.FC<PodcastLibraryViewProps> = ({
               
               <div className={`w-px h-4 mx-1 self-center ${isDarkMode ? 'bg-slate-700' : 'bg-slate-300'}`} />
               
-              {['story', 'news', 'knowledge'].map(type => (
+              {['video', 'audio', 'text'].map(type => (
                 <button
                   key={type}
                   onClick={() => setActiveFilter(type)}

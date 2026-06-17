@@ -17,14 +17,14 @@ interface PodcastSubscribeViewProps {
     summary: string, 
     content: string, 
     channelName: string, 
-    type: 'story' | 'news' | 'knowledge'
+    type: 'video' | 'audio' | 'text'
   ) => void;
 }
 
 interface Subscription {
   id: string;
   title: string;
-  type: 'story' | 'news' | 'knowledge';
+  type: 'video' | 'audio' | 'text';
   time: string;
   description: string;
   isSubscribed: boolean;
@@ -34,10 +34,10 @@ interface Subscription {
 }
 
 const defaultSubscriptions: Subscription[] = [
-  { id: '1', title: '每日科技速递', type: 'news', time: '每天 08:00', description: '每天早上8点，为你播报最新科技圈动态与深度解析。', isSubscribed: true },
-  { id: '2', title: '睡前奇幻故事', type: 'story', time: '每天 22:00', description: '伴随轻柔音乐，讲述奇幻睡前故事，助你安然入眠。', isSubscribed: false },
-  { id: '3', title: '历史上的今天', type: 'knowledge', time: '每天 09:00', description: '回顾历史长河中今天发生的重大事件与人物故事。', isSubscribed: false },
-  { id: '4', title: '商业思维日课', type: 'knowledge', time: '工作日 18:00', description: '下班通勤路上的商业认知升级，解析最新商业案例。', isSubscribed: false },
+  { id: '1', title: '每日科技速递', type: 'text', time: '每天 08:00', description: '每天早上8点，为你播报最新科技圈动态与深度解析。', isSubscribed: true },
+  { id: '2', title: '睡前奇幻故事', type: 'text', time: '每天 22:00', description: '伴随轻柔音乐，讲述奇幻睡前故事，助你安然入眠。', isSubscribed: false },
+  { id: '3', title: '历史上的今天', type: 'text', time: '每天 09:00', description: '回顾历史长河中今天发生的重大事件与人物故事。', isSubscribed: false },
+  { id: '4', title: '商业思维日课', type: 'text', time: '工作日 18:00', description: '下班通勤路上的商业认知升级，解析最新商业案例。', isSubscribed: false },
 ];
 
 export const PodcastSubscribeView: React.FC<PodcastSubscribeViewProps> = ({ 
@@ -52,7 +52,7 @@ export const PodcastSubscribeView: React.FC<PodcastSubscribeViewProps> = ({
   
   // DIY Form States
   const [diyTitle, setDiyTitle] = useState('我的DIY学术讲座');
-  const [diyType, setDiyType] = useState<'story' | 'news' | 'knowledge'>('knowledge');
+  const [diyType, setDiyType] = useState<'video' | 'audio' | 'text'>('text');
   const [diyDir, setDiyDir] = useState('D:/Documents/AudioLectures');
   const [isScanning, setIsScanning] = useState(false);
   const [scanStep, setScanStep] = useState(0); // 0: idle, 1: scanning, 2: scan complete
@@ -200,15 +200,15 @@ export const PodcastSubscribeView: React.FC<PodcastSubscribeViewProps> = ({
   const recommendedSubs = subs.filter(s => !s.isSubscribed);
 
   const typeIcons = {
-    story: <Book size={14} className="text-orange-500" />,
-    news: <Newspaper size={14} className="text-emerald-500" />,
-    knowledge: <BookOpen size={14} className="text-indigo-500" />
+    video: <Video size={14} className="text-pink-500" />,
+    audio: <Volume2 size={14} className="text-sky-500" />,
+    text: <Book size={14} className="text-emerald-500" />
   };
 
   const typeLabels = {
-    story: '故事',
-    news: '资讯',
-    knowledge: '知识'
+    video: '视频',
+    audio: '音频',
+    text: '图文'
   };
 
   const renderSubCard = (sub: Subscription) => {
@@ -228,8 +228,8 @@ export const PodcastSubscribeView: React.FC<PodcastSubscribeViewProps> = ({
             <div className="flex items-center gap-2">
               {typeIcons[sub.type]}
               <span className={`text-[10px] font-black uppercase tracking-wider ${
-                sub.type === 'story' ? 'text-orange-500' : 
-                sub.type === 'news' ? 'text-emerald-500' : 'text-indigo-500'
+                sub.type === 'video' ? 'text-pink-500' : 
+                sub.type === 'audio' ? 'text-sky-500' : 'text-emerald-500'
               }`}>
                 {typeLabels[sub.type]}
               </span>
@@ -573,9 +573,9 @@ export const PodcastSubscribeView: React.FC<PodcastSubscribeViewProps> = ({
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { type: 'knowledge', label: '📖 知识精讲', desc: '提炼大纲深入浅出解析' },
-                      { type: 'news', label: '📰 动态简报', desc: '极速归纳核心干货要点' },
-                      { type: 'story', label: '🎨 叙事访谈', desc: '高趣味度故事情节讲解' },
+                      { type: 'text', label: '📝 国风图文', desc: '以富有深度的图文提炼解析' },
+                      { type: 'audio', label: '🎙️ 专业音频', desc: '合成双人自然互动说话声' },
+                      { type: 'video', label: '🎥 高清视频', desc: '匹配大纲与可视化章节视频' },
                     ].map((item) => (
                       <button
                         key={item.type}
