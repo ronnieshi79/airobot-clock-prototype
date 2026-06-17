@@ -1,0 +1,10 @@
+{
+  "name": "AiRobot Clock Pro++",
+  "description": "AI驱动、拟物化风格的AI机器人闹钟应用（功能性应用）。支持功能性智能体AI闹钟、定时器和专注计时及日程管理；通过与AI机器人AETHER的语音对话，实现功能卡片的自动唤醒与交互，涵盖日程管理、知识播客、事务闹钟等日常功能服务。",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
