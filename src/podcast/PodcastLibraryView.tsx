@@ -62,8 +62,14 @@ export const PodcastLibraryView: React.FC<PodcastLibraryViewProps> = ({
         isDarkMode ? 'bg-slate-800/50 border-white/5' : 'bg-white border-slate-100 shadow-sm'
       }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      {/* 标题放在第一行，最多单行显示 */}
+      <h4 className={`text-sm font-black mb-1 truncate ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+        {episode.title}
+      </h4>
+
+      {/* 其次才是所属栏目，类型，状态等信息 */}
+      <div className="flex items-center justify-between mb-3 mt-1 underline-offset-4">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {typeIcons[episode.type]}
           <span className={`text-[10px] font-black uppercase tracking-wider ${
             episode.type === 'video' ? 'text-pink-500' : 
@@ -71,31 +77,28 @@ export const PodcastLibraryView: React.FC<PodcastLibraryViewProps> = ({
           }`}>
             {typeLabels[episode.type]}
           </span>
+          {showChannel && episode.channelName && (
+            <span className={`text-[10px] font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+              · {episode.channelName}
+            </span>
+          )}
         </div>
+        
         {episode.played ? (
-          <CheckCircle2 size={14} className="text-emerald-500" />
+          <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
         ) : episode.progress && episode.progress > 0 ? (
-          <div className="flex items-center gap-1 text-blue-500">
+          <div className="flex items-center gap-1 text-blue-500 shrink-0">
             <Clock size={12} />
             <span className="text-[10px] font-bold">{Math.round(episode.progress)}%</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
             <span className="text-[10px] font-bold text-blue-500">未播放</span>
           </div>
         )}
       </div>
       
-      {showChannel && episode.channelName && (
-        <div className={`text-[10px] font-bold mb-1 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
-          {episode.channelName}
-        </div>
-      )}
-      
-      <h4 className={`text-sm font-black mb-2 line-clamp-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-        {episode.title}
-      </h4>
       <p className={`text-xs font-bold leading-relaxed line-clamp-2 mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
         {episode.summary}
       </p>
