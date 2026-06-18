@@ -35,8 +35,8 @@ interface Subscription {
 
 const defaultSubscriptions: Subscription[] = [
   { id: '1', title: '每日科技速递', type: 'text', time: '每天 08:00', description: '每天早上8点，为你播报最新科技圈动态与深度解析。', isSubscribed: true },
-  { id: '2', title: '睡前奇幻故事', type: 'text', time: '每天 22:00', description: '伴随轻柔音乐，讲述奇幻睡前故事，助你安然入眠。', isSubscribed: false },
-  { id: '3', title: '历史上的今天', type: 'text', time: '每天 09:00', description: '回顾历史长河中今天发生的重大事件与人物故事。', isSubscribed: false },
+  { id: '2', title: '每日声音电台', type: 'audio', time: '每天 22:00', description: '高音质立体声配音，让你在通勤和深夜用耳朵领略自然森林白噪音与人声互动。', isSubscribed: true },
+  { id: '3', title: '我的DIY视频栏目', type: 'video', time: '每天 09:00', description: '科技前沿视频播报与虚拟图表可视化的生动全息智能视频。', isSubscribed: true },
   { id: '4', title: '商业思维日课', type: 'text', time: '工作日 18:00', description: '下班通勤路上的商业认知升级，解析最新商业案例。', isSubscribed: false },
 ];
 
@@ -67,7 +67,7 @@ export const PodcastSubscribeView: React.FC<PodcastSubscribeViewProps> = ({
 
   // Load subscriptions on mount
   useEffect(() => {
-    const saved = localStorage.getItem('aether_podcast_subscriptions_v3');
+    const saved = localStorage.getItem('aether_podcast_subscriptions_v4');
     if (saved) {
       try {
         setSubs(JSON.parse(saved));
@@ -81,7 +81,7 @@ export const PodcastSubscribeView: React.FC<PodcastSubscribeViewProps> = ({
 
   const saveSubs = (updatedSubs: Subscription[]) => {
     setSubs(updatedSubs);
-    localStorage.setItem('aether_podcast_subscriptions_v3', JSON.stringify(updatedSubs));
+    localStorage.setItem('aether_podcast_subscriptions_v4', JSON.stringify(updatedSubs));
   };
 
   const toggleSub = (id: string) => {

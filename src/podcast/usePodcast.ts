@@ -40,7 +40,7 @@ export function usePodcast() {
           });
           // Only save to localStorage every 5 seconds to avoid spamming
           if (Math.floor((activeEpisode.progress || 0)) % 5 === 0) {
-            localStorage.setItem('aether_podcast_history_v2', JSON.stringify(updated));
+            localStorage.setItem('aether_podcast_history_v3', JSON.stringify(updated));
           }
           return updated;
         });
@@ -56,7 +56,7 @@ export function usePodcast() {
   }, [isPlaying, activeEpisode?.id]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('aether_podcast_history_v2');
+    const saved = localStorage.getItem('aether_podcast_history_v3');
     if (saved) {
       try {
         setEpisodes(JSON.parse(saved));
@@ -124,7 +124,7 @@ export function usePodcast() {
         }
       ];
       setEpisodes(initial);
-      localStorage.setItem('aether_podcast_history_v2', JSON.stringify(initial));
+      localStorage.setItem('aether_podcast_history_v3', JSON.stringify(initial));
     }
   }, []);
 
@@ -133,7 +133,7 @@ export function usePodcast() {
       const updated = prev.map(ep => 
         ep.id === id ? { ...ep, progress, played: progress >= 95 || ep.played } : ep
       );
-      localStorage.setItem('aether_podcast_history_v2', JSON.stringify(updated));
+      localStorage.setItem('aether_podcast_history_v3', JSON.stringify(updated));
       return updated;
     });
     
@@ -145,7 +145,7 @@ export function usePodcast() {
       const updated = prev.map(ep => 
         ep.id === id ? { ...ep, qnaHistory: [...(ep.qnaHistory || []), { question, answer }] } : ep
       );
-      localStorage.setItem('aether_podcast_history_v2', JSON.stringify(updated));
+      localStorage.setItem('aether_podcast_history_v3', JSON.stringify(updated));
       return updated;
     });
     
@@ -157,7 +157,7 @@ export function usePodcast() {
       const updated = prev.map(ep => 
         ep.id === id ? { ...ep, favorite: !ep.favorite } : ep
       );
-      localStorage.setItem('aether_podcast_history_v2', JSON.stringify(updated));
+      localStorage.setItem('aether_podcast_history_v3', JSON.stringify(updated));
       return updated;
     });
     
@@ -205,7 +205,7 @@ export function usePodcast() {
 
       setEpisodes(prev => {
         const updated = [newEpisode, ...prev].slice(0, 20);
-        localStorage.setItem('aether_podcast_history_v2', JSON.stringify(updated));
+        localStorage.setItem('aether_podcast_history_v3', JSON.stringify(updated));
         return updated;
       });
       setActiveEpisode(newEpisode);
@@ -236,7 +236,7 @@ export function usePodcast() {
       };
       setEpisodes(prev => {
         const updated = [newEpisode, ...prev].slice(0, 20);
-        localStorage.setItem('aether_podcast_history_v2', JSON.stringify(updated));
+        localStorage.setItem('aether_podcast_history_v3', JSON.stringify(updated));
         return updated;
       });
       setActiveEpisode(newEpisode);
@@ -270,7 +270,7 @@ export function usePodcast() {
     };
     setEpisodes(prev => {
       const updated = [newEpisode, ...prev].slice(0, 20);
-      localStorage.setItem('aether_podcast_history_v2', JSON.stringify(updated));
+      localStorage.setItem('aether_podcast_history_v3', JSON.stringify(updated));
       return updated;
     });
     setActiveEpisode(newEpisode);
