@@ -308,7 +308,8 @@ export default function App() {
   const handleRobotChat = async (prompt: string, type: 'general' | 'knowledge' | 'story' | 'news' | 'timer' | 'focus' | 'alarm' = 'general', systemInstruction?: string) => {
     // Intent detection for Chat scenarios and other modules
     if (type === 'knowledge' || type === 'story' || type === 'news') {
-      generateEpisode(type, prompt);
+      const mappedType = type === 'story' ? 'video' : type === 'news' ? 'text' : 'audio';
+      generateEpisode(mappedType, prompt);
       setActiveOverlay('podcast');
       return;
     }
@@ -656,15 +657,15 @@ export default function App() {
     }
 
     if (lowerText.includes("故事") || lowerText.includes("讲一个") || lowerText.includes("听个")) {
-      generateEpisode('story', lowerText);
+      generateEpisode('video', lowerText);
       setActiveOverlay('podcast');
       return { isClosing: false, handled: true };
     } else if (lowerText.includes("资讯") || lowerText.includes("新闻") || lowerText.includes("最近发生")) {
-      generateEpisode('news', lowerText);
+      generateEpisode('text', lowerText);
       setActiveOverlay('podcast');
       return { isClosing: false, handled: true };
     } else if (lowerText.includes("知识") || lowerText.includes("科普") || lowerText.includes("学习")) {
-      generateEpisode('knowledge', lowerText);
+      generateEpisode('audio', lowerText);
       setActiveOverlay('podcast');
       return { isClosing: false, handled: true };
     }

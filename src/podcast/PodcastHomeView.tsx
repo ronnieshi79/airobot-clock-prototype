@@ -11,7 +11,7 @@ interface PodcastHomeViewProps {
   episodes: PodcastEpisode[];
   recommendation: string;
   onSelectEpisode: (episode: PodcastEpisode) => void;
-  onGenerate: (type: 'story' | 'news' | 'knowledge') => void;
+  onGenerate: (type: 'video' | 'audio' | 'text') => void;
   time: Date;
   schedules: ScheduleItem[];
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
@@ -177,15 +177,15 @@ export const PodcastHomeView: React.FC<PodcastHomeViewProps> = ({
                   }`}
                 >
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm relative ${
-                    episode.type === 'story' ? 'bg-orange-500/10' :
-                    episode.type === 'news' ? 'bg-emerald-500/10' : 'bg-indigo-500/10'
+                    episode.type === 'video' ? 'bg-pink-500/10' :
+                    episode.type === 'audio' ? 'bg-sky-500/10' : 'bg-emerald-500/10'
                   }`}>
                     {episode.bgImage ? (
                       <img src={episode.bgImage} className="absolute inset-0 w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" alt="cover" />
                     ) : (
                       <Play size={16} fill="currentColor" className={
-                        episode.type === 'story' ? 'text-orange-500' :
-                        episode.type === 'news' ? 'text-emerald-500' : 'text-indigo-500'
+                        episode.type === 'video' ? 'text-pink-500' :
+                        episode.type === 'audio' ? 'text-sky-500' : 'text-emerald-500'
                       } />
                     )}
                   </div>
@@ -194,7 +194,7 @@ export const PodcastHomeView: React.FC<PodcastHomeViewProps> = ({
                       {episode.title}
                     </h4>
                     <div className={`flex items-center gap-2 mt-1 text-[10px] font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                      <span className="truncate">{episode.date} · {episode.type === 'story' ? '故事' : episode.type === 'news' ? '资讯' : '知识'}</span>
+                      <span className="truncate">{episode.date} · {episode.type === 'video' ? '视频' : episode.type === 'audio' ? '音频' : '图文'}</span>
                       {(episode.qnaHistory?.length ?? 0) > 0 && (
                         <span className="flex items-center gap-1 shrink-0 ml-auto bg-pink-500/10 text-pink-500 px-1.5 py-0.5 rounded-full text-[10px]">
                           <MessageSquare size={10} />
@@ -236,10 +236,10 @@ export const PodcastHomeView: React.FC<PodcastHomeViewProps> = ({
           if (actionId === 'logbook') {
             onShowLogbook?.();
           } else if (actionId === 'play-podcast-news') {
-            onGenerate('news');
+            onGenerate('audio');
             onOpenPlayer?.();
           } else if (actionId === 'play-podcast-knowledge') {
-            onGenerate('knowledge');
+            onGenerate('text');
             onOpenPlayer?.();
           }
         }}

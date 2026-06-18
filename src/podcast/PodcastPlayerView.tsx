@@ -53,7 +53,7 @@ export const PodcastPlayerView: React.FC<PodcastPlayerViewProps> = ({
         <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md flex-shrink-0 ${
           isDarkMode ? 'bg-white/20 text-white' : 'bg-black/10 text-slate-800'
         } backdrop-blur-md`}>
-          {episode.type === 'story' ? '故事' : episode.type === 'news' ? '资讯' : '知识'}
+          {episode.type === 'video' ? '视频' : episode.type === 'audio' ? '音频' : '图文'}
         </span>
         <h1 className={`text-xl font-black tracking-tight truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
           {episode.title}

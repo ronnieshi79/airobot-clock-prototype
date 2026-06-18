@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, Pause, Minimize2, Power, Disc, Radio, MessageCircle } from 'lucide-react';
+import { Play, Pause, Minimize2, Power, Disc, Radio, MessageCircle, Tv, BookOpen, Volume2, Bookmark } from 'lucide-react';
 import { PodcastEpisode } from './usePodcast';
 
 interface PodcastOverlayProps {
@@ -25,6 +25,16 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
   onAskAether,
 }) => {
   if (!episode) return null;
+
+  // Split content into paragraphs or dialogue segments for dynamic captions and notebook tracking
+  const scriptLines = episode.content
+    ? episode.content.split('\n').filter(line => line.trim())
+    : [];
+  const activeScriptIndex = Math.min(
+    Math.floor((progress / 100) * Math.max(scriptLines.length, 1)),
+    Math.max(scriptLines.length - 1, 0)
+  );
+  const activeSubtitle = scriptLines[activeScriptIndex] || "连接 Airobot 共同解锁更多话题见解...";
 
   return (
     <AnimatePresence>
@@ -92,60 +102,228 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
                   : 'bg-gradient-to-b from-[#E2DCC8] via-[#F1F0E8] to-[#D5CEA3] border-2 border-white'
               }`}>
                 
-                {/* Turntable Platter (Top) */}
+                {/* Turntable Platter (Top) - Switchable according to type */}
                 <div className="w-full flex-1 flex items-center justify-center relative mb-8 min-h-[300px]">
-                   {/* Platter Base Ring */}
-                   <div className={`w-full aspect-square max-w-[320px] max-h-[320px] rounded-full flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.4),inset_0_5px_10px_rgba(255,255,255,0.1)] ${
-                     isDarkMode ? 'bg-slate-900 border-4 border-slate-800' : 'bg-slate-800 border-4 border-slate-700'
-                   }`}>
-                      {/* Vinyl Record */}
-                      <motion.div 
-                        animate={isPlaying ? { rotate: 360 } : {}}
-                        transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                        className="w-[92%] h-[92%] rounded-full bg-[#111] flex items-center justify-center relative overflow-hidden shadow-[inset_0_4px_15px_rgba(255,255,255,0.15)]"
-                      >
-                         {/* Retro Grooves */}
-                         <div className="absolute inset-[4%] rounded-full border border-white/5" />
-                         <div className="absolute inset-[8%] rounded-full border border-white/10" />
-                         <div className="absolute inset-[13%] rounded-full border border-white/5" />
-                         <div className="absolute inset-[18%] rounded-full border border-white/10" />
-                         <div className="absolute inset-[24%] rounded-full border border-white/5" />
-                         <div className="absolute inset-[30%] rounded-full border border-white/10" />
-                         <div className="absolute inset-[36%] rounded-full border border-white/5" />
+                   
+                   {episode.type === 'audio' ? (
+                     /* 1. 音频：古典黑胶唱盘机 HIFI Player */
+                     <div className="relative w-full h-full flex items-center justify-center">
+                       {/* Platter Base Ring */}
+                       <div className={`w-full aspect-square max-w-[310px] max-h-[310px] rounded-full flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.4),inset_0_5px_10px_rgba(255,255,255,0.1)] ${
+                         isDarkMode ? 'bg-slate-900 border-4 border-slate-800' : 'bg-slate-800 border-4 border-slate-700'
+                       }`}>
+                          {/* Vinyl Record */}
+                          <motion.div 
+                            animate={isPlaying ? { rotate: 360 } : {}}
+                            transition={{ repeat: Infinity, duration: 5, ease: "linear" }}
+                            className="w-[92%] h-[92%] rounded-full bg-[#111] flex items-center justify-center relative overflow-hidden shadow-[inset_0_4px_15px_rgba(255,255,255,0.15)]"
+                          >
+                             {/* Retro Grooves */}
+                             <div className="absolute inset-[4%] rounded-full border border-white/5" />
+                             <div className="absolute inset-[8%] rounded-full border border-white/10" />
+                             <div className="absolute inset-[13%] rounded-full border border-white/5" />
+                             <div className="absolute inset-[18%] rounded-full border border-white/10" />
+                             <div className="absolute inset-[24%] rounded-full border border-white/5" />
+                             <div className="absolute inset-[30%] rounded-full border border-white/10" />
+                             <div className="absolute inset-[36%] rounded-full border border-white/5" />
+                             
+                             {/* Center Label (Cover Art) */}
+                             <div className="relative w-[35%] h-[35%] rounded-full border-[6px] border-[#111] shadow-[0_0_15px_rgba(0,0,0,0.8)] overflow-hidden bg-slate-200">
+                               <img 
+                                 src={episode.bgImage} 
+                                 alt="Album Art" 
+                                 className="absolute inset-0 w-full h-full object-cover opacity-90"
+                                 referrerPolicy="no-referrer"
+                               />
+                               {/* Spindle hole */}
+                               <div className="absolute top-1/2 left-1/2 w-3 h-3 -ml-1.5 -mt-1.5 rounded-full bg-slate-300 border border-slate-500 shadow-inner" />
+                             </div>
+                          </motion.div>
+                       </div>
+
+                       {/* Tone Arm Base */}
+                       <div className="absolute top-0 right-2 w-16 h-16 rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.5)] flex items-center justify-center bg-gradient-to-br from-slate-300 to-slate-500 border border-slate-400">
+                         <div className="w-8 h-8 rounded-full shadow-inner bg-gradient-to-br from-slate-400 to-slate-600" />
+                       </div>
+
+                       {/* Tone Arm Stick - sweeps in physically depending on play/progress */}
+                       <motion.div 
+                         animate={{ rotate: isPlaying ? (15 + (progress * 0.15)) : 2 }}
+                         transition={{ type: 'spring', stiffness: 50, damping: 20 }}
+                         className="absolute top-8 right-9 w-2.5 h-[65%] shadow-[2px_10px_15px_rgba(0,0,0,0.5)] origin-top z-10"
+                         style={{ transformOrigin: 'top center' }}
+                       >
+                         {/* The Arm Line */}
+                         <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400 rounded-full border border-white/20" />
+                         {/* The Stylus/Head */}
+                         <div className="absolute bottom-0 -left-2.5 w-7 h-12 bg-gradient-to-br from-slate-600 to-slate-800 rounded-sm shadow-xl flex items-center justify-center border-t border-slate-400">
+                            <div className="w-1/2 h-1/2 bg-red-500/20 rounded-full" />
+                         </div>
+                       </motion.div>
+
+                       {/* Sound VU equalizers hopping under the turntable */}
+                       <div className="absolute bottom-1 left-2 flex items-end gap-[3px] bg-black/40 px-2.5 py-1.5 rounded-xl border border-white/10 shadow-lg backdrop-blur-sm">
+                         {[...Array(6)].map((_, i) => (
+                           <div key={i} className="flex flex-col gap-[2px]">
+                             {[...Array(4)].map((_, j) => (
+                               <motion.div
+                                 key={j}
+                                 animate={isPlaying ? { opacity: [0.2, 1, 0.2] } : { opacity: 0.2 }}
+                                 transition={{
+                                   repeat: Infinity,
+                                   duration: 0.25 + i * 0.08,
+                                   delay: j * 0.04,
+                                   ease: "easeInOut"
+                                 }}
+                                 className={`w-1.5 h-1 rounded-[1px] ${
+                                   j === 0 ? 'bg-rose-500' : j === 1 ? 'bg-amber-400' : 'bg-emerald-400'
+                                 }`}
+                               />
+                             ))}
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   ) : episode.type === 'video' ? (
+                     /* 2. 视频：复古科幻 CRT 显示电视机 Retro Monitor */
+                     <div className="relative w-full h-full max-w-[340px] aspect-[4/3] rounded-[2.5rem] p-4 bg-gradient-to-b from-stone-800 to-stone-950 border-[6px] border-stone-700 shadow-[0_25px_50px_rgba(0,0,0,0.8),inset_0_4px_10px_rgba(255,255,255,0.15)] flex flex-col overflow-hidden">
+                       {/* CRT Screen inside */}
+                       <div className="relative flex-1 bg-[#101c16] rounded-[1.5rem] overflow-hidden border-2 border-stone-900 flex flex-col justify-between p-4 shadow-[inset_0_10px_25px_rgba(0,0,0,0.9)]">
+                         {/* CRT reflection glass layer */}
+                         <div className="absolute inset-0 z-10 pointer-events-none opacity-[0.14] bg-[linear-gradient(rgba(18,16,16,0)_50%,_rgba(0,0,0,0.25)_50%)] bg-[size:100%_4px]" />
+                         <div className="absolute inset-0 z-10 pointer-events-none shadow-[inset_0_0_80px_rgba(0,0,0,0.9),0_0_15px_rgba(20,184,166,0.15)] rounded-[1.2rem]" />
                          
-                         {/* Center Label (Cover Art) */}
-                         <div className="relative w-[35%] h-[35%] rounded-full border-[6px] border-[#111] shadow-[0_0_15px_rgba(0,0,0,0.8)] overflow-hidden bg-slate-200">
-                           <img 
-                             src={episode.bgImage} 
-                             alt="Album Art" 
-                             className="absolute inset-0 w-full h-full object-cover opacity-90"
+                         {/* Header VHS status info */}
+                         <div className="flex items-center justify-between z-10 text-[9px] font-mono font-black text-teal-400 tracking-wider">
+                           <div className="flex items-center gap-1.5 animate-pulse">
+                             <div className="w-2 h-2 bg-rose-500 rounded-full" />
+                             <span>PLAY CH1</span>
+                           </div>
+                           <span>TR {Math.floor(progress * 0.09)}:{(Math.floor(progress * 5.4) % 60).toString().padStart(2, '0')}</span>
+                         </div>
+
+                         {/* Center content: custom audio wave and thumbnail */}
+                         <div className="relative flex-1 flex items-center justify-center z-0">
+                           {/* Concentric expanding ripples around thumb */}
+                           {[...Array(4)].map((_, index) => (
+                             <motion.div
+                               key={index}
+                               animate={isPlaying ? {
+                                 scale: [0.9 + index * 0.1, 1.4 + index * 0.2, 0.9 + index * 0.1],
+                                 opacity: [0.55 - index * 0.12, 0.15, 0.55 - index * 0.12]
+                               } : {}}
+                               transition={{
+                                 repeat: Infinity,
+                                 duration: 2 + index * 0.4,
+                                 ease: "linear"
+                               }}
+                               className="absolute rounded-full border border-teal-500/30 flex items-center justify-center"
+                               style={{ width: `${65 + index * 32}px`, height: `${65 + index * 32}px` }}
+                             />
+                           ))}
+
+                           {/* Sine wave oscilloscope */}
+                           <svg className="absolute w-full h-16 opacity-75" viewBox="0 0 300 100">
+                             <motion.path
+                               d="M 0 50 Q 50 20 100 50 T 200 50 T 300 50"
+                               fill="none"
+                               stroke="#2dd4bf"
+                               strokeWidth="3.5"
+                               animate={isPlaying ? {
+                                 d: [
+                                   "M 0 50 Q 30 15, 75 85, 120 15 T 180 85 T 240 15 T 300 50",
+                                   "M 0 50 Q 40 85, 80 15, 120 85 T 180 15 T 240 85 T 300 50",
+                                   "M 0 50 Q 30 15, 75 85, 120 15 T 180 85 T 240 15 T 300 50"
+                                 ]
+                               } : {}}
+                               transition={{
+                                 repeat: Infinity,
+                                 duration: 1.1,
+                                 ease: "easeInOut"
+                               }}
+                             />
+                           </svg>
+
+                           <img
+                             src={episode.bgImage}
+                             alt="feed cover"
+                             className="w-16 h-16 rounded-xl border border-stone-800 object-cover opacity-80 absolute filter grayscale contrast-125 brightness-90 shadow-md"
                              referrerPolicy="no-referrer"
                            />
-                           {/* Spindle hole */}
-                           <div className="absolute top-1/2 left-1/2 w-3 h-3 -ml-1.5 -mt-1.5 rounded-full bg-slate-300 border border-slate-500 shadow-inner" />
                          </div>
-                      </motion.div>
-                   </div>
 
-                   {/* Tone Arm Base */}
-                   <div className="absolute top-0 right-2 w-16 h-16 rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.5)] flex items-center justify-center bg-gradient-to-br from-slate-300 to-slate-500 border border-slate-400">
-                     <div className="w-8 h-8 rounded-full shadow-inner bg-gradient-to-br from-slate-400 to-slate-600" />
-                   </div>
+                         {/* Captions box at the bottom (animated sentences from script content) */}
+                         <div className="relative z-10 w-full min-h-[46px] px-2 py-1.5 bg-black/70 rounded-lg border border-teal-950/40 text-center flex items-center justify-center">
+                           <p className="text-[11px] font-black font-mono leading-snug text-teal-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] line-clamp-2">
+                             {activeSubtitle}
+                           </p>
+                         </div>
+                       </div>
 
-                   {/* Tone Arm Stick */}
-                   <motion.div 
-                     animate={{ rotate: isPlaying ? 25 : 0 }}
-                     transition={{ type: 'spring', stiffness: 50, damping: 20 }}
-                     className="absolute top-8 right-9 w-2.5 h-[65%] shadow-[2px_10px_15px_rgba(0,0,0,0.5)] origin-top z-10"
-                     style={{ transformOrigin: 'top center' }}
-                   >
-                     {/* The Arm Line */}
-                     <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400 rounded-full border border-white/20" />
-                     {/* The Stylus/Head */}
-                     <div className="absolute bottom-0 -left-2.5 w-7 h-12 bg-gradient-to-br from-slate-600 to-slate-800 rounded-sm shadow-xl flex items-center justify-center border-t border-slate-400">
-                        <div className="w-1/2 h-1/2 bg-red-500/20 rounded-full" />
+                       {/* Status metal bar on cabinet bottom */}
+                       <div className="flex items-center justify-between mt-3 px-2 text-stone-500 text-[10px] uppercase font-bold shrink-0">
+                         <div className="flex gap-2">
+                           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                           <span>VIDEO SIGNAL OK</span>
+                         </div>
+                         <span>CRT_MODE_ON</span>
+                       </div>
                      </div>
-                   </motion.div>
+                   ) : (
+                     /* 3. 图文：古典牛皮纸活页账本 Open Journal */
+                     <div className="relative w-full h-[320px] max-w-[340px] rounded-[1.8rem] bg-[#f9f6f0] border-2 border-[#D5CEA3]/80 p-5 shadow-[0_15px_35px_rgba(0,0,0,0.25),inset_0_3px_10px_rgba(255,255,255,0.75)] flex flex-col overflow-hidden">
+                       {/* Bindings rings on the far left seam */}
+                       <div className="absolute left-3.5 top-0 bottom-0 w-1 bg-gradient-to-r from-stone-300 to-stone-400 shadow-inner flex flex-col justify-around py-4 z-20">
+                         {[...Array(6)].map((_, i) => (
+                           <div key={i} className="w-3 h-1.5 -ml-[4px] rounded-full bg-gradient-to-r from-stone-400 to-stone-500 border border-stone-600 shadow-sm" />
+                         ))}
+                       </div>
+
+                       {/* Ivory ledger header */}
+                       <div className="flex justify-between items-center pl-6 border-b border-dashed border-[#D5CEA3] pb-2 mb-3 z-10 shrink-0">
+                         <div className="flex items-center gap-1.5">
+                           <BookOpen size={13} className="text-emerald-700 font-black" />
+                           <span className="text-[10px] font-sans font-black text-emerald-800 tracking-wider">AETHER LEDGER SCRIPT</span>
+                         </div>
+                         <span className="text-[9px] font-mono text-stone-500">PAGE {Math.floor(progress / 10) + 1}/10</span>
+                       </div>
+
+                       {/* Scrollable script paragraph with interactive highlighters! */}
+                       <div className="flex-1 overflow-y-auto pl-6 pr-2 custom-scrollbar text-left flex flex-col gap-4 select-none relative z-10">
+                         {scriptLines.map((line, idx) => {
+                           const isCurrent = idx === activeScriptIndex;
+                           return (
+                             <motion.div
+                               key={idx}
+                               animate={isCurrent ? { scale: 1.02 } : { scale: 1 }}
+                               className={`relative p-1 rounded transition-all duration-300 ${
+                                 isCurrent ? 'text-amber-950 font-black' : 'text-stone-600/80 font-bold'
+                               }`}
+                             >
+                               {isCurrent && (
+                                 <motion.div
+                                   layoutId="highlighter-marker-stroke"
+                                   initial={{ width: 0 }}
+                                   animate={{ width: "100%" }}
+                                   transition={{ duration: 0.5, ease: "easeOut" }}
+                                   className="absolute inset-0 bg-yellow-300/45 rounded-sm z-0 pointer-events-none"
+                                 />
+                               )}
+                               <p className="relative z-10 text-[11px] font-serif leading-relaxed">
+                                 {line}
+                               </p>
+                             </motion.div>
+                           );
+                         })}
+                       </div>
+
+                       {/* Scroll prompt anchor */}
+                       <div className="absolute bottom-2 right-4 pointer-events-none text-[8px] font-bold text-stone-400 animate-bounce flex items-center gap-0.5 z-20">
+                         <span>↓ 独立滚动阅读全篇</span>
+                       </div>
+                     </div>
+                   )}
+
                 </div>
 
                 {/* Details & Info Area (Bottom) */}
@@ -156,7 +334,7 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
                     <div className="flex items-center gap-2">
                       <Radio size={18} className={isDarkMode ? 'text-indigo-400' : 'text-orange-500'} />
                       <span className={`text-[11px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-indigo-400' : 'text-orange-600'}`}>
-                        Retro Player
+                        {episode.type === 'video' ? 'Video Case' : episode.type === 'audio' ? 'Audio Station' : 'Text Journal'}
                       </span>
                     </div>
                     
@@ -187,7 +365,7 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
                     </div>
                     {/* Metal Slider Track */}
                     <div className={`h-2.5 rounded-full overflow-hidden shadow-inner relative ${
-                      isDarkMode ? 'bg-slate-900 border border-slate-700' : 'bg-slate-300 border border-slate-400'
+                       isDarkMode ? 'bg-slate-900 border border-slate-700' : 'bg-slate-300 border border-slate-400'
                     }`}>
                        <motion.div 
                          className={`absolute top-0 left-0 h-full ${
@@ -208,9 +386,10 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
                   {/* Episode Title & Summary */}
                   <div className="flex-1 mt-2">
                     <span className={`inline-block px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded mb-3 ${
-                      isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-300/50 text-slate-700'
+                      episode.type === 'video' ? 'bg-pink-500/15 text-pink-500' :
+                      episode.type === 'audio' ? 'bg-sky-500/15 text-sky-500' : 'bg-emerald-500/15 text-emerald-500'
                     }`}>
-                      {episode.type === 'story' ? '故事' : episode.type === 'news' ? '资讯' : '知识'}
+                      {episode.type === 'video' ? '视频播客' : episode.type === 'audio' ? '音频播客' : '图文播客'}
                     </span>
                     <h2 className={`text-2xl font-black mb-3 leading-tight line-clamp-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                       {episode.title}
@@ -229,3 +408,4 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
     </AnimatePresence>
   );
 };
+
