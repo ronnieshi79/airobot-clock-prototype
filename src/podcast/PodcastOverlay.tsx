@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Play,
@@ -12,6 +12,10 @@ import {
   BookOpen,
   Volume2,
   Bookmark,
+  Sparkles,
+  Layers,
+  CheckSquare,
+  AudioLines,
 } from "lucide-react";
 import { PodcastEpisode } from "./usePodcast";
 
@@ -36,6 +40,15 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
   onClose,
   onAskAether,
 }) => {
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const triggerToast = (featureName: string) => {
+    setToastMessage(`【${featureName}】功能后续将根据用户需求开发，当前先作为演示原型。`);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev?.includes(featureName) ? null : prev));
+    }, 2800);
+  };
+
   if (!episode) return null;
 
   // Split content into paragraphs or dialogue segments for dynamic captions and notebook tracking
@@ -475,21 +488,72 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
                       </span>
                     </div>
 
-                    {/* Chat History Icon */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => onAskAether(episode.title)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm ${
-                        isDarkMode
-                          ? "bg-slate-800 border-slate-600 text-indigo-300 hover:bg-slate-700"
-                          : "bg-white border-slate-300 text-indigo-600 hover:bg-slate-50"
-                      }`}
-                      title="与 Airobot 讨论此播客"
-                    >
-                      <MessageCircle size={14} />
-                      <span className="text-[10px] font-black">0 条对话</span>
-                    </motion.button>
+                    {/* NotebookLM Style Feature toolbar - Independent buttons layout */}
+                    <div className="flex items-center gap-2">
+                      {/* 1. 音频概要 */}
+                      <motion.button
+                        whileHover={{ scale: 1.1, y: -1 }}
+                        whileTap={{ scale: 0.9 }}
+                        type="button"
+                        onClick={() => triggerToast('音频概要')}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border ${
+                          isDarkMode 
+                            ? 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30' 
+                            : 'bg-white border-[#D5CEA3]/45 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/25'
+                        }`}
+                        title="音频概要"
+                      >
+                        <AudioLines size={14} />
+                      </motion.button>
+
+                      {/* 2. 知识卡片（闪卡） */}
+                      <motion.button
+                        whileHover={{ scale: 1.1, y: -1 }}
+                        whileTap={{ scale: 0.9 }}
+                        type="button"
+                        onClick={() => triggerToast('知识卡片（闪卡）')}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border ${
+                          isDarkMode 
+                            ? 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30' 
+                            : 'bg-white border-[#D5CEA3]/45 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/25'
+                        }`}
+                        title="知识卡片（闪卡）"
+                      >
+                        <Layers size={14} />
+                      </motion.button>
+
+                      {/* 3. 答题卡（测验） */}
+                      <motion.button
+                        whileHover={{ scale: 1.1, y: -1 }}
+                        whileTap={{ scale: 0.9 }}
+                        type="button"
+                        onClick={() => triggerToast('答题卡（测验）')}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm border ${
+                          isDarkMode 
+                            ? 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30' 
+                            : 'bg-white border-[#D5CEA3]/45 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/25'
+                        }`}
+                        title="答题卡（测验）"
+                      >
+                        <CheckSquare size={14} />
+                      </motion.button>
+
+                      {/* 4. 对话 (Active & Highlighted as primary actionable feature) */}
+                      <motion.button
+                        whileHover={{ scale: 1.1, y: -1 }}
+                        whileTap={{ scale: 0.9 }}
+                        type="button"
+                        onClick={() => onAskAether(episode.title)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md border ${
+                          isDarkMode 
+                            ? 'bg-indigo-950/50 border-indigo-500/40 text-indigo-400 hover:bg-indigo-900/50 hover:text-indigo-300' 
+                            : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-750'
+                        }`}
+                        title="与 Airobot 讨论此播客 (对话)"
+                      >
+                        <MessageCircle size={14} className="animate-pulse" />
+                      </motion.button>
+                    </div>
                   </div>
 
                   {/* Progress (Analog meter style) */}
@@ -567,6 +631,27 @@ export const PodcastOverlay: React.FC<PodcastOverlayProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Toast Alert Pop-up */}
+              <AnimatePresence>
+                {toastMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                    className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl shadow-xl border backdrop-blur-2xl text-[11px] font-black flex items-center justify-center gap-2 tracking-tight text-center max-w-[85%] leading-relaxed"
+                    style={{
+                      backgroundColor: isDarkMode ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)",
+                      borderColor: isDarkMode ? "rgba(99, 102, 241, 0.3)" : "rgba(122, 115, 92, 0.3)",
+                      color: isDarkMode ? "#e2e8f0" : "#423b2c",
+                    }}
+                  >
+                    <Sparkles size={13} className="text-amber-500 shrink-0 animate-pulse" />
+                    <span>{toastMessage}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
             </motion.div>
           </div>
         </motion.div>
