@@ -1001,6 +1001,7 @@ export default function App() {
                   time={time}
                   schedules={schedules}
                   onNavigate={(cat, sub) => { setMainCategory(cat); setSubCategory(sub); }}
+                  onAddCustomEpisode={addCustomEpisode}
                 />
               ) : subCategory === 'podcast-subscribe' ? (
                 <PodcastSubscribeView

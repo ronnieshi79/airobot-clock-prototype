@@ -59,9 +59,31 @@ export function usePodcast() {
     const saved = localStorage.getItem('aether_podcast_history_v3');
     if (saved) {
       try {
-        setEpisodes(JSON.parse(saved));
+        let loaded: PodcastEpisode[] = JSON.parse(saved);
+        loaded = loaded.map(ep => {
+          let updatedTitle = ep.title;
+          if (updatedTitle.includes('：')) {
+            const parts = updatedTitle.split('：');
+            if (parts[0].includes('我的DIY') || parts[0] === ep.channelName) {
+              updatedTitle = parts.slice(1).join('：');
+            }
+          }
+          if (updatedTitle.includes(':')) {
+            const parts = updatedTitle.split(':');
+            if (parts[0].includes('我的DIY') || parts[0] === ep.channelName) {
+              updatedTitle = parts.slice(1).join(':');
+            }
+          }
+          let channelName = ep.channelName;
+          if (channelName.includes('我的DIY')) {
+            channelName = '我的DIY创作';
+          }
+          return { ...ep, title: updatedTitle, channelName };
+        });
+        setEpisodes(loaded);
+        localStorage.setItem('aether_podcast_history_v3', JSON.stringify(loaded));
       } catch (e) {
-        console.error("Failed to parse podcast history");
+        console.error("Failed to parse/migrate podcast history", e);
       }
     } else {
       // Initial data with 4 episodes (2 unplayed)
@@ -188,7 +210,7 @@ export function usePodcast() {
 
       const data = JSON.parse(response.text);
       const channelMap = {
-        video: '我的DIY视频栏目',
+        video: '我的DIY创作',
         audio: '每日声音电台',
         text: '每日科技速递'
       };
@@ -214,7 +236,7 @@ export function usePodcast() {
       // Fallback for when API quota is exhausted
       const fallbackTitle = topic ? `关于${topic}的特别探索` : '随机发现新知';
       const channelMap = {
-        video: '我的DIY视频栏目',
+        video: '我的DIY创作',
         audio: '每日声音电台',
         text: '每日科技速递'
       };
@@ -260,7 +282,7 @@ export function usePodcast() {
       summary,
       content,
       type,
-      channelName,
+      channelName: '我的DIY创作',
       date: new Date().toISOString().split('T')[0],
       bgImage: `https://picsum.photos/seed/diy_${Date.now()}/1024/1024?blur=2`,
       progress: 0,
