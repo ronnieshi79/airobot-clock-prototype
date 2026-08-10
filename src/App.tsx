@@ -45,9 +45,9 @@ import { GoogleGenAI, Modality, LiveServerMessage } from "@google/genai";
 import { HomeMenu } from './components/HomeMenu';
 import { AlarmView, TimeView, useClock, TimeOverlay, AlarmOverlay, LogbookOverlay } from './clock';
 import { AetherRobot, useAether } from './airobot';
-import { useSchedule, TodayView, CalendarView, ScheduleView, CalendarHomeView, CalendarFlexView, CalendarListView } from './schedule';
+import { useSchedule, TodayView, CalendarView, ScheduleView, CalendarHomeView, CalendarFlexView, CalendarListView, SchedulePlannerOverlay, getTodayInfo } from './schedule';
 import { usePodcast, PodcastHomeView, PodcastPlayerView, PodcastLibraryView, PodcastSubscribeView, PodcastOverlay } from './podcast';
-import { MainCategory, SubCategory, ScheduleItem, Message, AlarmItem, ActiveCard } from './types';
+import { MainCategory, SubCategory, ScheduleItem, TodoItem, Message, AlarmItem, ActiveCard } from './types';
 import { SkeuomorphicDial } from './components/SkeuomorphicDial';
 import { FunctionalModulePlate } from './components/FunctionalModulePlate';
 import { agentService } from './services/agentService';
@@ -61,6 +61,8 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<'focus' | 'timer' | 'alarm' | 'podcast' | 'logbook' | null>(null);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
+  const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+  const [plannerInitialItem, setPlannerInitialItem] = useState<ScheduleItem | TodoItem | undefined>(undefined);
   
   const [lastRingingAlarmId, setLastRingingAlarmId] = useState<string | null>(null);
   
@@ -953,6 +955,10 @@ export default function App() {
                   time={time}
                   onNavigate={(cat, sub) => { setMainCategory(cat); setSubCategory(sub); }}
                   onShowLogbook={() => setActiveOverlay('logbook')}
+                  onShowPlanner={(item) => {
+                    setPlannerInitialItem(item);
+                    setIsPlannerOpen(true);
+                  }}
                 />
               )}
               {subCategory === 'calendar-flex' && (
@@ -965,6 +971,10 @@ export default function App() {
                   time={time}
                   onNavigate={(cat, sub) => { setMainCategory(cat); setSubCategory(sub); }}
                   onToggleTodo={toggleTodo}
+                  onShowPlanner={(item) => {
+                    setPlannerInitialItem(item);
+                    setIsPlannerOpen(true);
+                  }}
                 />
               )}
               {subCategory === 'calendar-list' && (
@@ -977,6 +987,10 @@ export default function App() {
                   onToggleTodo={toggleTodo}
                   onAddTodo={addTodo}
                   onToggleSchedule={toggleSchedule}
+                  onShowPlanner={(item) => {
+                    setPlannerInitialItem(item);
+                    setIsPlannerOpen(true);
+                  }}
                 />
               )}
             </div>
@@ -1142,6 +1156,17 @@ export default function App() {
                 setIsChatOpen(true);
                 handleRobotChat(`关于《${topic}》，我想了解更多...`);
               }}
+            />
+
+            <SchedulePlannerOverlay 
+              isOpen={isPlannerOpen} 
+              onClose={() => setIsPlannerOpen(false)} 
+              isDarkMode={isDarkMode}
+              schedules={schedules}
+              todos={todos}
+              initialItem={plannerInitialItem}
+              todayInfo={getTodayInfo(selectedDate)}
+              time={time}
             />
           </div>
         </div>

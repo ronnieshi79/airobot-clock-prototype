@@ -4,5 +4,6 @@ export * from './TodayView';
 export * from './CalendarHomeView';
 export * from './CalendarFlexView';
 export * from './CalendarListView';
+export * from './SchedulePlannerOverlay';
 export * from './useSchedule';
 export * from './utils';

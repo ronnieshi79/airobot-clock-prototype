@@ -13,6 +13,7 @@ interface CalendarHomeViewProps {
   time: Date;
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
   onShowLogbook: () => void;
+  onShowPlanner?: (item?: ScheduleItem | TodoItem) => void;
 }
 
 export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
@@ -21,7 +22,8 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   schedules,
   time,
   onNavigate,
-  onShowLogbook
+  onShowLogbook,
+  onShowPlanner
 }) => {
   const [isPlanningOpen, setIsPlanningOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{id: string, type: 'schedule' | 'todo'} | null>(null);
@@ -39,12 +41,21 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   ];
 
   const handleOpenPlanner = (id?: string, type?: 'schedule' | 'todo') => {
+    let itemObj: ScheduleItem | TodoItem | undefined = undefined;
     if (id && type) {
-      setSelectedItem({ id, type });
-    } else {
-      setSelectedItem(null);
+      if (type === 'todo') itemObj = todos.find(t => t.id === id);
+      else itemObj = schedules.find(s => s.id === id);
     }
-    setIsPlanningOpen(true);
+    if (onShowPlanner) {
+      onShowPlanner(itemObj);
+    } else {
+      if (id && type) {
+        setSelectedItem({ id, type });
+      } else {
+        setSelectedItem(null);
+      }
+      setIsPlanningOpen(true);
+    }
   };
 
   return (

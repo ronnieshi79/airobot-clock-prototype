@@ -43,7 +43,7 @@ export const TimeView: React.FC<TimeViewProps> = ({
   const [editingId, setEditingId] = React.useState<string | null>(null);
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden relative">
+    <div className="w-full h-full flex flex-col overflow-hidden relative pb-4">
       {/* Header */}
       <div className="mb-2 flex-shrink-0 pr-12">
         <div className="flex items-center gap-3 mb-1">
@@ -228,14 +228,18 @@ export const TimeView: React.FC<TimeViewProps> = ({
       </div>
 
       {/* Bottom Aether Prompt */}
-      <div className="mt-auto pt-4 flex-shrink-0">
-        <div className={`p-5 rounded-[2.5rem] border flex items-start gap-4 transition-all ${
-          isDarkMode ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50/80 border-indigo-200'
+      <div className="absolute bottom-0 left-2 right-8 flex-shrink-0 z-20">
+        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3 transition-all shadow-xl backdrop-blur-xl ${
+          isDarkMode ? 'bg-indigo-900/60 border-indigo-500/30' : 'bg-indigo-50/90 border-indigo-200'
         }`}>
-          <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center mt-0.5">
-             <Brain size={18} className="text-indigo-500" />
+          <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
+             <Brain size={16} className="text-indigo-500" />
+             <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+             </span>
           </div>
-          <div className="flex flex-col gap-1.5 mt-0.5">
+          <div className="flex flex-col gap-1 mt-0.5">
             <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>AETHER 提示</p>
             <p className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               您可以根据任务需要配置计时模式或专注模式。对我说“Aether，帮我倒计时 15 分钟”便可直接启动，我会为您播放合适的背景音。

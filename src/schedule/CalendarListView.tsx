@@ -14,6 +14,7 @@ interface CalendarListViewProps {
   onToggleTodo: (id: string) => void;
   onAddTodo: (task: string, date?: string, time?: string) => void;
   onToggleSchedule: (id: string) => void;
+  onShowPlanner?: (item?: ScheduleItem | TodoItem) => void;
 }
 
 export const CalendarListView: React.FC<CalendarListViewProps> = ({ 
@@ -24,7 +25,8 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   onNavigate,
   onToggleTodo,
   onAddTodo,
-  onToggleSchedule
+  onToggleSchedule,
+  onShowPlanner
 }) => {
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'overdue' | 'open'>('today');
   const [isAdding, setIsAdding] = useState(false);
@@ -36,9 +38,18 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [activePlannerItem, setActivePlannerItem] = useState<{ id: string, type: 'schedule' | 'todo' } | undefined>(undefined);
 
-  const openPlanner = (item: { id: string, type: 'schedule' | 'todo' }) => {
-    setActivePlannerItem(item);
-    setPlannerOpen(true);
+  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }) => {
+    let itemObj: ScheduleItem | TodoItem | undefined = undefined;
+    if (item) {
+      if (item.type === 'todo') itemObj = todos.find(t => t.id === item.id);
+      else itemObj = schedules.find(s => s.id === item.id);
+    }
+    if (onShowPlanner) {
+      onShowPlanner(itemObj);
+    } else {
+      setActivePlannerItem(item);
+      setPlannerOpen(true);
+    }
   };
   
   const dayInfo = getTodayInfo(time);
@@ -95,7 +106,7 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   ] as const;
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden">
+    <div className="w-full h-full flex flex-col overflow-hidden relative pb-4">
       {/* 1. Header */}
       <div className="mb-4 flex-shrink-0 pr-12">
         <div className="flex items-center gap-3 mb-2">
@@ -230,33 +241,41 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* 4. Task Summary (事务概要组件) */}
-      <div className={`mt-4 p-4 rounded-3xl shrink-0 flex items-center justify-between shadow-sm border ${isDarkMode ? 'bg-slate-800/60 border-white/5' : 'bg-white border-slate-100'}`}>
-         <div className="flex flex-col gap-1">
-           <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>
-             <Bot size={12} />
-             Aether 事务概要
-           </span>
-           <span className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-             {(() => {
-                const openTodos = todos.filter(t => t.status === 'open');
-                const overdues = openTodos.filter(t => t.date && t.date < todayStr);
-                const upcoming = openTodos.filter(t => t.date === todayStr);
-                
-                if (openTodos.length === 0) return '太棒了，所有待办均已清空！享受属于你的时间吧。';
-
-                let summary = `目前共有 ${openTodos.length} 项待办。`;
-                if (overdues.length > 0) {
-                  summary += `有 ${overdues.length} 项已逾期，建议优先处理！`;
-                } else if (upcoming.length > 0) {
-                  summary += `其中 ${upcoming.length} 项将于今日到期，请把握进度。`;
-                } else {
-                   summary += `所有项均在计划内，事务流态健康。`;
-                }
-                return summary;
-             })()}
-           </span>
-         </div>
+      {/* Bottom Aether Prompt */}
+      <div className="absolute bottom-0 left-2 right-8 flex-shrink-0 z-20">
+        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3 transition-all shadow-xl backdrop-blur-xl ${
+          isDarkMode ? 'bg-rose-900/60 border-rose-500/30' : 'bg-rose-50/90 border-rose-200'
+        }`}>
+          <div className="w-9 h-9 rounded-full bg-rose-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
+            <Bot size={16} className="text-rose-500" />
+            <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 mt-0.5">
+            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>AETHER 提示</p>
+            <p className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              {(() => {
+                 const openTodos = todos.filter(t => t.status === 'open');
+                 const overdues = openTodos.filter(t => t.date && t.date < todayStr);
+                 const upcoming = openTodos.filter(t => t.date === todayStr);
+                 
+                 if (openTodos.length === 0) return '太棒了，所有待办均已清空！享受属于你的时间吧。';
+ 
+                 let summary = `目前共有 ${openTodos.length} 项待办。`;
+                 if (overdues.length > 0) {
+                   summary += `有 ${overdues.length} 项已逾期，建议优先处理！`;
+                 } else if (upcoming.length > 0) {
+                   summary += `其中 ${upcoming.length} 项将于今日到期，请把握进度。`;
+                 } else {
+                    summary += `所有项均在计划内，事务流态健康。`;
+                 }
+                 return summary;
+              })()}
+            </p>
+          </div>
+        </div>
       </div>
       
       <SchedulePlannerOverlay 

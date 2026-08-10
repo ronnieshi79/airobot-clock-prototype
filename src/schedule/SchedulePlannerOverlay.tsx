@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Clock, CheckSquare, Power, GripVertical, ChevronRight, ChevronLeft, Sparkles, CloudSun, CalendarIcon, X, Plus, Minimize2, Trash2 } from 'lucide-react';
+import { Mic, Clock, CheckSquare, Power, GripVertical, ChevronRight, ChevronLeft, Sparkles, CloudSun, CalendarIcon, X, Plus, Minimize2, Trash2, Bot } from 'lucide-react';
 import { ScheduleItem, TodoItem, WeatherInfo } from '../types';
 
 interface SchedulePlannerOverlayProps {
@@ -193,7 +193,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute -top-10 -left-10 -right-10 -bottom-10 z-50 flex items-center justify-center pt-6 pb-8 overflow-hidden rounded-[5rem]"
+            className="absolute inset-0 z-50 flex items-center justify-center pt-6 pb-8 overflow-hidden rounded-[5rem]"
         >
           {/* Opaque/Blurred Background Container referencing Podcast Player */}
           <div className={`absolute inset-0 backdrop-blur-md ${isDarkMode ? 'bg-black/60' : 'bg-slate-900/40'}`} onClick={onClose} />
@@ -326,7 +326,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                 </div>
 
                 {/* Timeline Center */}
-                <div className="flex-1 relative flex flex-col px-6 mt-2 overflow-hidden pb-10">
+                <div className="flex-1 relative flex flex-col px-6 mt-2 overflow-hidden pb-16">
                   <div className="flex-1 relative" ref={scrollRef}>
                     {/* Left Vertical Ruler Line */}
                     <div className="absolute left-[52px] top-4 bottom-4 w-[1px] z-10 bg-white/10"></div>
@@ -533,6 +533,27 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                     </div>
                   </div>
                   
+                  {/* Bottom Unified Glassmorphism Aether Prompt Card */}
+                  <div className="absolute bottom-2 left-4 right-4 z-40 pointer-events-auto">
+                    <div className={`px-5 py-3 rounded-[2rem] border flex items-center gap-3 transition-all shadow-2xl backdrop-blur-xl ${
+                      isDarkMode ? 'bg-indigo-950/75 border-indigo-500/30' : 'bg-slate-900/85 border-white/20'
+                    }`}>
+                      <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center relative">
+                         <Bot size={16} className="text-indigo-400" />
+                         <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+                         </span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400">AETHER 日程提示</p>
+                        <p className="text-xs font-bold leading-tight truncate text-slate-200">
+                          {todayInfo?.aiAdvice || '拖拽日程卡片可调整时间，双击任务名称可修改内容'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Trash Bin Overlay */}
                   <AnimatePresence>
                     {draggingId && (

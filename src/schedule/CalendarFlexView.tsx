@@ -14,6 +14,7 @@ interface CalendarFlexViewProps {
   time: Date;
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
   onToggleTodo?: (id: string) => void;
+  onShowPlanner?: (item?: ScheduleItem | TodoItem) => void;
 }
 
 const getLocalDateString = (d: Date) => {
@@ -35,14 +36,24 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
   schedules, 
   time,
   onNavigate,
-  onToggleTodo
+  onToggleTodo,
+  onShowPlanner
 }) => {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [activePlannerItem, setActivePlannerItem] = useState<{ id: string, type: 'schedule' | 'todo' } | undefined>(undefined);
 
-  const openPlanner = (item: { id: string, type: 'schedule' | 'todo' }) => {
-    setActivePlannerItem(item);
-    setPlannerOpen(true);
+  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }) => {
+    let itemObj: ScheduleItem | TodoItem | undefined = undefined;
+    if (item) {
+      if (item.type === 'todo') itemObj = todos.find(t => t.id === item.id);
+      else itemObj = schedules.find(s => s.id === item.id);
+    }
+    if (onShowPlanner) {
+      onShowPlanner(itemObj);
+    } else {
+      setActivePlannerItem(item);
+      setPlannerOpen(true);
+    }
   };
 
   // Month grid logic
@@ -63,7 +74,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden pb-4">
+    <div className="w-full h-full flex flex-col overflow-hidden relative">
       {/* 1. Header & Controls */}
       <div className="mb-2 flex-shrink-0 pr-12 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -111,8 +122,11 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
                 key={`m-${d}`} 
-                onClick={() => setSelectedDate(date)}
-                className={`p-2 rounded-2xl flex flex-col items-center justify-start transition-all relative overflow-hidden ${
+                onClick={() => {
+                  setSelectedDate(date);
+                  openPlanner();
+                }}
+                className={`p-1.5 rounded-2xl flex flex-col items-center justify-start transition-all relative overflow-hidden ${
                   isTodayLocal 
                     ? (isDarkMode ? 'bg-indigo-600/90 text-white shadow-lg shadow-indigo-900/50' : 'bg-indigo-500 text-white shadow-md shadow-indigo-200')
                     : isSelected 
@@ -120,16 +134,16 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                       : (isDarkMode ? 'bg-slate-800/40 text-slate-300 hover:bg-slate-700' : 'bg-white/60 border border-slate-100 hover:bg-white hover:shadow-sm text-slate-600')
                 }`}
               >
-                <div className="flex w-full justify-between items-start mb-1">
-                  <span className={`text-sm font-black leading-none ${isTodayLocal ? 'text-white' : (isDarkMode ? 'text-slate-200' : 'text-slate-700')}`}>
+                <div className="flex w-full justify-between items-start mb-0.5 px-0.5">
+                  <span className={`text-lg font-black leading-none ${isTodayLocal ? 'text-white' : (isDarkMode ? 'text-slate-200' : 'text-slate-700')}`}>
                     {d}
                   </span>
                   {hasItems && (
-                    <div className={`w-1.5 h-1.5 rounded-full ${isTodayLocal ? 'bg-white' : 'bg-indigo-500'}`} />
+                    <div className={`w-1.5 h-1.5 mt-1 rounded-full ${isTodayLocal ? 'bg-white' : 'bg-indigo-500'}`} />
                   )}
                 </div>
 
-                <div className={`text-[10px] font-bold leading-tight mt-auto text-center truncate w-full ${
+                <div className={`text-[9px] font-bold leading-tight mt-auto text-center truncate w-full ${
                   cellInfo.festival 
                     ? (isTodayLocal ? 'text-indigo-100' : 'text-rose-500') 
                     : cellInfo.solarTerm
@@ -140,7 +154,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                 </div>
 
                 {/* Always show weather icon + temp */}
-                <div className={`flex items-center justify-center gap-0.5 mt-1 text-[9px] font-bold ${
+                <div className={`flex items-center justify-center gap-0.5 mt-0.5 text-[9px] font-bold ${
                   isTodayLocal ? 'text-white/80' : (isDarkMode ? 'text-sky-400/80' : 'text-sky-600/80')
                 }`}>
                   {getWeatherIcon(cellInfo.weather.condition)}
@@ -152,49 +166,37 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
         </div>
       </div>
       
-      {/* Airobot Insight for the Month */}
-      <div className={`mx-2 p-4 rounded-3xl mt-4 border flex items-start gap-4 flex-shrink-0 ${
-        isDarkMode 
-          ? 'bg-slate-950/40 border-white/5' 
-          : 'bg-indigo-50/50 border-indigo-100/50'
-      }`}>
-        <div className="relative">
-          <div className="absolute inset-0 bg-indigo-500 rounded-full blur-md opacity-30 animate-pulse" />
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center relative z-10 ${
-            isDarkMode 
-              ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-lg shadow-indigo-900/50 text-white' 
-              : 'bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-md shadow-indigo-200 text-white'
-          }`}>
-            <Bot size={22} />
-          </div>
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1.5">
-            <h3 className={`text-sm font-black tracking-wide ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>
-              Airobot 智能提炼解读
-            </h3>
-            <span className="flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+      {/* Bottom Aether Prompt */}
+      <div className="absolute bottom-0 left-2 right-8 flex-shrink-0 z-20">
+        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3 transition-all shadow-xl backdrop-blur-xl ${
+          isDarkMode ? 'bg-indigo-900/60 border-indigo-500/30' : 'bg-indigo-50/90 border-indigo-200'
+        }`}>
+          <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
+            <Bot size={16} className="text-indigo-500" />
+            <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
             </span>
           </div>
-          <p className={`text-[11px] leading-relaxed font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-            {(() => {
-              const monthSchedulesCount = schedules.filter(s => {
-                if (s.date) {
-                  const sDate = new Date(s.date);
-                  return sDate.getFullYear() === selectedDate.getFullYear() && sDate.getMonth() === selectedDate.getMonth();
-                }
-                return true; 
-              }).length;
+          <div className="flex flex-col gap-1 mt-0.5">
+            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>AETHER 提示</p>
+            <p className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+              {(() => {
+                const monthSchedulesCount = schedules.filter(s => {
+                  if (s.date) {
+                    const sDate = new Date(s.date);
+                    return sDate.getFullYear() === selectedDate.getFullYear() && sDate.getMonth() === selectedDate.getMonth();
+                  }
+                  return true; 
+                }).length;
 
-              const monthFestivals = monthDays.map(d => getTodayInfo(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d)).festival).filter(Boolean);
-              const uniqueFestivals = Array.from(new Set(monthFestivals)).slice(0, 2);
+                const monthFestivals = monthDays.map(d => getTodayInfo(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d)).festival).filter(Boolean);
+                const uniqueFestivals = Array.from(new Set(monthFestivals)).slice(0, 2);
 
-              return `主人，本月是${monthName}，您有 ${monthSchedulesCount} 项日程安排。${uniqueFestivals.length > 0 ? `本月包含 ${uniqueFestivals.join(' 和 ')} 等重要节日。` : ''}季节更替，请注意实时天气变化！`;
-            })()}
-          </p>
+                return `主人，本月是${monthName}，您有 ${monthSchedulesCount} 项日程安排。${uniqueFestivals.length > 0 ? `本月包含 ${uniqueFestivals.join(' 和 ')} 等重要节日。` : ''}季节更替，请注意实时天气变化！`;
+              })()}
+            </p>
+          </div>
         </div>
       </div>
       
