@@ -58,7 +58,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                 <Calendar size={20} />
               </div>
               <h2 className={`text-2xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                AI 日程
+                AI 日历
               </h2>
             </div>
             <p className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>

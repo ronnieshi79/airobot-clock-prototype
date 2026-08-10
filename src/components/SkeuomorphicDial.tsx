@@ -12,7 +12,7 @@ interface SkeuomorphicDialProps {
 }
 
 export const SkeuomorphicDial: React.FC<SkeuomorphicDialProps> = ({ activeCategory, onChange, onCenterClick, isDark, subCategory }) => {
-  const categories: MainCategory[] = ['time', 'podcast', 'calendar'];
+  const categories: MainCategory[] = ['time', 'calendar', 'podcast'];
   const currentIndex = categories.indexOf(activeCategory);
   
   const [rotation, setRotation] = useState(currentIndex * 120);
@@ -65,8 +65,8 @@ export const SkeuomorphicDial: React.FC<SkeuomorphicDialProps> = ({ activeCatego
 
   const iconConfigs = [
     { id: 'time', label: 'AI时钟', Icon: Clock },
+    { id: 'calendar', label: 'AI日历', Icon: Calendar },
     { id: 'podcast', label: 'AI播客', Icon: Headphones },
-    { id: 'calendar', label: 'AI日程', Icon: Calendar },
   ];
 
   return (
