@@ -14,7 +14,7 @@ interface CalendarListViewProps {
   onToggleTodo: (id: string) => void;
   onAddTodo: (task: string, date?: string, time?: string) => void;
   onToggleSchedule: (id: string) => void;
-  onShowPlanner?: (item?: ScheduleItem | TodoItem) => void;
+  onShowPlanner?: (item?: ScheduleItem | TodoItem, date?: Date) => void;
 }
 
 export const CalendarListView: React.FC<CalendarListViewProps> = ({ 
@@ -38,14 +38,14 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [activePlannerItem, setActivePlannerItem] = useState<{ id: string, type: 'schedule' | 'todo' } | undefined>(undefined);
 
-  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }) => {
+  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }, targetDate?: Date) => {
     let itemObj: ScheduleItem | TodoItem | undefined = undefined;
     if (item) {
       if (item.type === 'todo') itemObj = todos.find(t => t.id === item.id);
       else itemObj = schedules.find(s => s.id === item.id);
     }
     if (onShowPlanner) {
-      onShowPlanner(itemObj);
+      onShowPlanner(itemObj, targetDate || time);
     } else {
       setActivePlannerItem(item);
       setPlannerOpen(true);

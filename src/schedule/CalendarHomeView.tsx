@@ -13,7 +13,7 @@ interface CalendarHomeViewProps {
   time: Date;
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
   onShowLogbook: () => void;
-  onShowPlanner?: (item?: ScheduleItem | TodoItem) => void;
+  onShowPlanner?: (item?: ScheduleItem | TodoItem, date?: Date) => void;
 }
 
 export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
@@ -47,7 +47,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
       else itemObj = schedules.find(s => s.id === id);
     }
     if (onShowPlanner) {
-      onShowPlanner(itemObj);
+      onShowPlanner(itemObj, time);
     } else {
       if (id && type) {
         setSelectedItem({ id, type });

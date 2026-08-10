@@ -1165,6 +1165,7 @@ export default function App() {
               schedules={schedules}
               todos={todos}
               initialItem={plannerInitialItem}
+              selectedDate={selectedDate}
               todayInfo={getTodayInfo(selectedDate)}
               time={time}
             />

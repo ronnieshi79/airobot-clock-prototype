@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, Clock, CheckSquare, Power, GripVertical, ChevronRight, ChevronLeft, Sparkles, CloudSun, CalendarIcon, X, Plus, Minimize2, Trash2, Bot } from 'lucide-react';
 import { ScheduleItem, TodoItem, WeatherInfo } from '../types';
+import { getTodayInfo } from './utils';
 
 interface SchedulePlannerOverlayProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface SchedulePlannerOverlayProps {
   schedules?: ScheduleItem[];
   todos?: TodoItem[];
   initialItem?: { id: string, type: 'schedule' | 'todo' };
+  selectedDate?: Date;
   todayInfo?: { 
     festival: string | undefined; 
     solarTerm: string | undefined; 
@@ -27,7 +29,8 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
   schedules = [],
   todos = [],
   initialItem,
-  todayInfo,
+  selectedDate,
+  todayInfo: propTodayInfo,
   time = new Date()
 }) => {
   const [dateOffset, setDateOffset] = useState(0);
@@ -45,9 +48,26 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
 
   const dateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Sync dateOffset when overlay opens or selectedDate changes
+  useEffect(() => {
+    if (isOpen) {
+      if (selectedDate) {
+        const t1 = new Date(time.getFullYear(), time.getMonth(), time.getDate()).getTime();
+        const t2 = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()).getTime();
+        const diffDays = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+        setDateOffset(diffDays);
+      } else {
+        setDateOffset(0);
+      }
+    }
+  }, [isOpen, selectedDate]);
+
   // Calculate Active Date
   const activeDate = new Date(time);
   activeDate.setDate(activeDate.getDate() + dateOffset);
+
+  // Dynamic day info for activeDate
+  const currentDayInfo = getTodayInfo(activeDate);
 
   const getRelativeDateLabel = (offset: number) => {
     if (offset === 0) return '今日';
@@ -277,12 +297,12 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                           <span className="text-lg font-black">{activeDate.getMonth() + 1}月{activeDate.getDate()}日</span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white shadow-inner">{getRelativeDateLabel(dateOffset)}</span>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">{dateOffset === 0 ? todayInfo?.lunarDate : '农历更新中...'}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">{currentDayInfo.lunarDate}</span>
                       </div>
                       <div className="w-[1px] h-8 bg-white/10"></div>
                       <div className="flex items-center gap-2 text-white">
                          <CloudSun size={16} className="text-sky-300 drop-shadow" />
-                         <span className="text-xs font-bold">{todayInfo?.weather.temp} {todayInfo?.weather.condition}</span>
+                         <span className="text-xs font-bold">{currentDayInfo.weather.temp} {currentDayInfo.weather.condition}</span>
                       </div>
                     </div>
                     
@@ -548,7 +568,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                       <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400">AETHER 日程提示</p>
                         <p className="text-xs font-bold leading-tight truncate text-slate-200">
-                          {todayInfo?.aiAdvice || '拖拽日程卡片可调整时间，双击任务名称可修改内容'}
+                          {currentDayInfo.aiAdvice || '拖拽日程卡片可调整时间，双击任务名称可修改内容'}
                         </p>
                       </div>
                     </div>

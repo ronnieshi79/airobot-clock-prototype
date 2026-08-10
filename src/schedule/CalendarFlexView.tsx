@@ -42,14 +42,15 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [activePlannerItem, setActivePlannerItem] = useState<{ id: string, type: 'schedule' | 'todo' } | undefined>(undefined);
 
-  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }) => {
+  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }, targetDate?: Date) => {
     let itemObj: ScheduleItem | TodoItem | undefined = undefined;
     if (item) {
       if (item.type === 'todo') itemObj = todos.find(t => t.id === item.id);
       else itemObj = schedules.find(s => s.id === item.id);
     }
+    const d = targetDate || selectedDate;
     if (onShowPlanner) {
-      onShowPlanner(itemObj);
+      onShowPlanner(itemObj, d);
     } else {
       setActivePlannerItem(item);
       setPlannerOpen(true);
@@ -90,8 +91,8 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
       </div>
 
       {/* Dynamic Grid */}
-      <div className="flex-1 px-1 flex flex-col mt-2 h-full">
-        <div className="flex items-baseline gap-2 mb-4 pl-2">
+      <div className="flex-1 px-1 flex flex-col mt-1 overflow-y-auto pb-20">
+        <div className="flex items-baseline gap-2 mb-3 pl-2 flex-shrink-0">
           <span className={`text-3xl font-black tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
             {selectedDate.getFullYear()}年
           </span>
@@ -100,14 +101,14 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
             第 {weekNumber} 周
           </span>
         </div>
-        <div className="grid grid-cols-7 gap-2 text-center mb-2">
+        <div className="grid grid-cols-7 gap-1.5 text-center mb-1.5 flex-shrink-0">
           {['日', '一', '二', '三', '四', '五', '六'].map((d, i) => (
             <span key={d} className={`text-xs font-black uppercase tracking-[0.1em] ${i === 0 || i === 6 ? 'text-indigo-400' : 'text-slate-400'}`}>{d}</span>
           ))}
         </div>
 
-        <div className="flex-1 grid grid-cols-7 gap-2 auto-rows-fr pb-2 h-full min-h-[350px]">
-          {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} className="rounded-2xl" />)}
+        <div className="grid grid-cols-7 gap-1.5">
+          {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} className="rounded-xl" />)}
           {monthDays.map(d => {
             const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d);
             const isTodayLocal = getLocalDateString(date) === getLocalDateString(time);
@@ -117,6 +118,12 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
             const cellInfo = getTodayInfo(date);
             const displayLunar = cellInfo.festival || cellInfo.solarTerm || cellInfo.lunarDate.replace(/农历.*月/, '');
 
+            // Weather prediction only for recent 7 days (today to today+6 days)
+            const todayTime = new Date(time.getFullYear(), time.getMonth(), time.getDate()).getTime();
+            const cellTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+            const diffDays = Math.round((cellTime - todayTime) / (1000 * 60 * 60 * 24));
+            const showWeather = diffDays >= 0 && diffDays < 7;
+
             return (
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -124,9 +131,9 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                 key={`m-${d}`} 
                 onClick={() => {
                   setSelectedDate(date);
-                  openPlanner();
+                  openPlanner(undefined, date);
                 }}
-                className={`p-1.5 rounded-2xl flex flex-col items-center justify-start transition-all relative overflow-hidden ${
+                className={`py-1 px-1 rounded-xl flex flex-col items-center justify-between transition-all relative overflow-hidden min-h-[52px] ${
                   isTodayLocal 
                     ? (isDarkMode ? 'bg-indigo-600/90 text-white shadow-lg shadow-indigo-900/50' : 'bg-indigo-500 text-white shadow-md shadow-indigo-200')
                     : isSelected 
@@ -134,31 +141,35 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                       : (isDarkMode ? 'bg-slate-800/40 text-slate-300 hover:bg-slate-700' : 'bg-white/60 border border-slate-100 hover:bg-white hover:shadow-sm text-slate-600')
                 }`}
               >
-                <div className="flex w-full justify-between items-start mb-0.5 px-0.5">
-                  <span className={`text-lg font-black leading-none ${isTodayLocal ? 'text-white' : (isDarkMode ? 'text-slate-200' : 'text-slate-700')}`}>
+                <div className="flex w-full justify-between items-start px-0.5">
+                  <span className={`text-xl font-black leading-none ${isTodayLocal ? 'text-white' : (isDarkMode ? 'text-slate-200' : 'text-slate-800')}`}>
                     {d}
                   </span>
                   {hasItems && (
-                    <div className={`w-1.5 h-1.5 mt-1 rounded-full ${isTodayLocal ? 'bg-white' : 'bg-indigo-500'}`} />
+                    <div className={`w-1.5 h-1.5 mt-0.5 rounded-full ${isTodayLocal ? 'bg-white' : 'bg-indigo-500'}`} />
                   )}
                 </div>
 
-                <div className={`text-[9px] font-bold leading-tight mt-auto text-center truncate w-full ${
-                  cellInfo.festival 
-                    ? (isTodayLocal ? 'text-indigo-100' : 'text-rose-500') 
-                    : cellInfo.solarTerm
-                      ? (isTodayLocal ? 'text-indigo-100' : 'text-emerald-500')
-                      : (isTodayLocal ? 'text-indigo-200' : (isDarkMode ? 'text-slate-500' : 'text-slate-400'))
-                }`}>
-                  {displayLunar}
-                </div>
+                <div className="flex flex-col items-center justify-end w-full gap-0 mt-0.5">
+                  <div className={`text-[9px] font-bold leading-none text-center truncate w-full ${
+                    cellInfo.festival 
+                      ? (isTodayLocal ? 'text-indigo-100' : 'text-rose-500') 
+                      : cellInfo.solarTerm
+                        ? (isTodayLocal ? 'text-indigo-100' : 'text-emerald-500')
+                        : (isTodayLocal ? 'text-indigo-200' : (isDarkMode ? 'text-slate-500' : 'text-slate-400'))
+                  }`}>
+                    {displayLunar}
+                  </div>
 
-                {/* Always show weather icon + temp */}
-                <div className={`flex items-center justify-center gap-0.5 mt-0.5 text-[9px] font-bold ${
-                  isTodayLocal ? 'text-white/80' : (isDarkMode ? 'text-sky-400/80' : 'text-sky-600/80')
-                }`}>
-                  {getWeatherIcon(cellInfo.weather.condition)}
-                  <span className="scale-90 origin-left">{cellInfo.weather.temp}</span>
+                  {/* Weather icon + temp only for the next 7 days */}
+                  {showWeather && (
+                    <div className={`flex items-center justify-center gap-0.5 text-[8px] font-bold mt-0.5 ${
+                      isTodayLocal ? 'text-white/90' : (isDarkMode ? 'text-sky-400/90' : 'text-sky-600/90')
+                    }`}>
+                      {getWeatherIcon(cellInfo.weather.condition)}
+                      <span className="scale-90 origin-left">{cellInfo.weather.temp}</span>
+                    </div>
+                  )}
                 </div>
               </motion.button>
             );
