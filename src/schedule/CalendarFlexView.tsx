@@ -92,7 +92,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
         </div>
       </div>
 
-      {/* 2. Month / Year / Week Header with Selected Date Info inline */}
+      {/* 2. Month / Year / Week Header */}
       <div className="flex items-center justify-between mb-2 pl-1 pr-1 flex-shrink-0">
         <div className="flex items-baseline gap-2">
           <span className={`text-xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
@@ -101,29 +101,6 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${isDarkMode ? 'bg-indigo-500/10 text-indigo-500' : 'bg-indigo-50 text-indigo-600'}`}>
             第 {weekNumber} 周
           </span>
-        </div>
-
-        {/* Selected Date & Lunar information in the same row */}
-        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
-          <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 rounded text-[10px] font-extrabold whitespace-nowrap">
-            {getRelativeDaysLabel(selectedDate, time)}
-          </span>
-          <span className={`font-black whitespace-nowrap ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>
-            {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日
-          </span>
-          <span className="text-[10px] font-medium whitespace-nowrap">
-            {selectedDayInfo.lunarDate.replace('农历', '')}
-          </span>
-          {selectedDayInfo.festival && (
-            <span className="text-rose-500 font-bold text-[9px] bg-rose-500/10 px-1 py-0.5 rounded whitespace-nowrap scale-95">
-              {selectedDayInfo.festival}
-            </span>
-          )}
-          {selectedDayInfo.solarTerm && (
-            <span className="text-emerald-500 font-bold text-[9px] bg-emerald-500/10 px-1 py-0.5 rounded whitespace-nowrap scale-95">
-              {selectedDayInfo.solarTerm}
-            </span>
-          )}
         </div>
       </div>
 
@@ -155,7 +132,6 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                 key={`m-${d}`} 
                 onClick={() => {
                   setSelectedDate(date);
-                  openPlanner(undefined, date);
                 }}
                 className={`flex flex-col items-center justify-between py-1 px-0.5 rounded-xl transition-all relative min-h-[50px] cursor-pointer ${
                   isSelected
@@ -205,6 +181,62 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
               </motion.button>
             );
           })}
+        </div>
+        
+        {/* 4. Selected Date "Little Tail" Widget - Centered, clickable to open planner */}
+        <div className="flex justify-center mt-2.5 mb-1.5 flex-shrink-0">
+          <motion.button
+            whileHover={{ scale: 1.03, y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => openPlanner(undefined, selectedDate)}
+            className={`flex items-center gap-2.5 px-5 py-2 rounded-[1.5rem] border transition-all shadow-md backdrop-blur-md cursor-pointer ${
+              isDarkMode
+                ? 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200 hover:bg-indigo-950/60 shadow-indigo-950/50'
+                : 'bg-white/95 border-indigo-100 hover:bg-white hover:border-indigo-200 text-slate-700 shadow-indigo-100/20'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-bold">
+              <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 rounded text-[10px] font-extrabold whitespace-nowrap">
+                {getRelativeDaysLabel(selectedDate, time)}
+              </span>
+              <span className={`font-black whitespace-nowrap ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>
+                {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日
+              </span>
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                {selectedDayInfo.lunarDate.replace('农历', '')}
+              </span>
+              {selectedDayInfo.festival && (
+                <span className="text-rose-500 font-bold text-[9px] bg-rose-500/10 px-1 py-0.5 rounded whitespace-nowrap scale-95">
+                  {selectedDayInfo.festival}
+                </span>
+              )}
+              {selectedDayInfo.solarTerm && (
+                <span className="text-emerald-500 font-bold text-[9px] bg-emerald-500/10 px-1 py-0.5 rounded whitespace-nowrap scale-95">
+                  {selectedDayInfo.solarTerm}
+                </span>
+              )}
+            </div>
+
+            <div className={`w-[1px] h-3.5 ${isDarkMode ? 'bg-indigo-500/30' : 'bg-indigo-100'} mx-0.5`} />
+
+            <div className="flex items-center gap-1.5 text-xs font-bold truncate max-w-[180px] sm:max-w-[280px]">
+              <span className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-wider">今日事务:</span>
+              <span className={`truncate ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'} font-black`}>
+                {(() => {
+                  const selectedDateStr = getLocalDateString(selectedDate);
+                  const daySchedules = schedules.filter(s => s.date === selectedDateStr || (!s.date && s.dayOfWeek === selectedDate.getDay()));
+                  const dayTodos = todos.filter(t => t.date === selectedDateStr);
+                  const items = [
+                    ...daySchedules.map(s => `${s.time ? s.time + ' ' : ''}${s.task || s.title || ''}`),
+                    ...dayTodos.map(t => `${t.time ? t.time + ' ' : ''}${t.task}`)
+                  ];
+                  if (items.length === 0) return '暂无日程，点击规划';
+                  return items.join('；');
+                })()}
+              </span>
+              <Sparkles size={12} className="text-indigo-400 animate-pulse flex-shrink-0" />
+            </div>
+          </motion.button>
         </div>
       </div>
 
