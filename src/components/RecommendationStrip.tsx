@@ -140,8 +140,8 @@ export const RecommendationStrip: React.FC<RecommendationStripProps> = ({
         color: 'text-indigo-500'
       });
 
-      // "事务管理" content
-      let taskSummary = `您目前有 ${openTodos.length} 项待办事务`;
+      // "待办管理" content
+      let taskSummary = `您目前有 ${openTodos.length} 项待办任务`;
       if (overdues.length > 0) {
         taskSummary += `，其中 ${overdues.length} 项已过期需要重点关注`;
       }
@@ -152,12 +152,12 @@ export const RecommendationStrip: React.FC<RecommendationStripProps> = ({
       }
 
       recs.push({
-        title: '事务管理',
+        title: '待办管理',
         icon: <CheckSquare />,
         content: taskSummary,
-        prompt: '前往 AI 事务中心',
+        prompt: '前往 AI 待办中心',
         actionId: 'planner',
-        color: 'text-rose-500'
+        color: 'text-indigo-500'
       });
 
       // "AiRobot 记录" content

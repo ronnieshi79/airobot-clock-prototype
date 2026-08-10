@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ListTodo, CheckSquare, Square, Clock, Plus, Calendar as CalendarIcon, Sparkles, Bot } from 'lucide-react';
+import { ListTodo, CheckSquare, Square, Clock, Plus, Calendar as CalendarIcon, Sparkles, Bot, ChevronUp, ChevronDown } from 'lucide-react';
 import { TodoItem, ScheduleItem, MainCategory, SubCategory } from '../types';
 import { SchedulePlannerOverlay } from './SchedulePlannerOverlay';
 import { getTodayInfo } from './utils';
@@ -19,8 +19,8 @@ interface CalendarListViewProps {
 
 export const CalendarListView: React.FC<CalendarListViewProps> = ({ 
   isDarkMode, 
-  todos, 
-  schedules,
+  todos = [], 
+  schedules = [],
   time,
   onNavigate,
   onToggleTodo,
@@ -28,12 +28,8 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   onToggleSchedule,
   onShowPlanner
 }) => {
-  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'overdue' | 'open'>('today');
-  const [isAdding, setIsAdding] = useState(false);
-  const [newTask, setNewTask] = useState('');
-  const [newDate, setNewDate] = useState('');
-  const [newTime, setNewTime] = useState('');
-  const [addType, setAddType] = useState<'todo' | 'schedule'>('todo');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'open' | 'closed' | 'today' | 'week'>('all');
+  const [completedCollapsed, setCompletedCollapsed] = useState(true);
   
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [activePlannerItem, setActivePlannerItem] = useState<{ id: string, type: 'schedule' | 'todo' } | undefined>(undefined);
@@ -53,72 +49,96 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   };
   
   const dayInfo = getTodayInfo(time);
-
   const todayStr = time.toISOString().split('T')[0];
   const nextWeekTime = time.getTime() + 7 * 86400000;
   const nextWeekStr = new Date(nextWeekTime).toISOString().split('T')[0];
 
-  type ListItem = 
-    | { type: 'todo', data: TodoItem }
-    | { type: 'schedule', data: ScheduleItem };
-
-  const allItems: ListItem[] = [];
-  
-  todos.forEach(t => allItems.push({ type: 'todo', data: t }));
-  schedules.forEach(s => allItems.push({ type: 'schedule', data: s }));
-
-  const filteredItems = allItems.filter(item => {
-    // Determine the date string for the item
-    let itemDate = '';
-    let isOpen = false;
-    
-    if (item.type === 'todo') {
-      itemDate = item.data.date || '';
-      isOpen = item.data.status === 'open';
-    } else {
-      // Schedule item
-      itemDate = item.data.date || '';
-      if (!itemDate) {
-        // Fallback for schedule without fixed date (derive from dayOfWeek logic)
-        const dayDiff = (item.data.dayOfWeek - time.getDay() + 7) % 7;
-        const d = new Date(time.getTime() + dayDiff * 86400000);
-        itemDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      }
-      isOpen = itemDate ? itemDate >= todayStr : true; // Schedules are valid if today or future
-    }
-
+  const filteredTodos = todos.filter(todo => {
+    const todoDate = todo.date || '';
     switch (timeFilter) {
-      case 'all-todos': return item.type === 'todo'; // Returns all todos
-      case 'open': return isOpen; 
-      case 'overdue': return itemDate && itemDate < todayStr && (item.type === 'todo' ? isOpen : true);
-      case 'today': return itemDate === todayStr;
-      case 'week': return itemDate >= todayStr && itemDate <= nextWeekStr;
-      default: return true;
+      case 'open':
+        return todo.status === 'open';
+      case 'closed':
+        return todo.status === 'closed';
+      case 'today':
+        return todoDate === todayStr;
+      case 'week':
+        return todoDate && todoDate >= todayStr && todoDate <= nextWeekStr;
+      case 'all':
+      default:
+        return true;
     }
   });
 
   const timeTabs = [
-    { id: 'today', label: '今天' },
-    { id: 'week', label: '近7天' },
+    { id: 'all', label: '全部' },
     { id: 'open', label: '进行中' },
-    { id: 'overdue', label: '已过期' },
-    { id: 'all-todos', label: '所有待办' },
+    { id: 'closed', label: '已完成' },
+    { id: 'today', label: '今天' },
+    { id: 'week', label: '最近7天' },
   ] as const;
 
+  const renderTodoCard = (todo: TodoItem) => (
+    <motion.div
+      onClick={() => openPlanner({ id: todo.id, type: 'todo' })}
+      key={`todo-${todo.id}`}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
+        isDarkMode 
+          ? 'bg-slate-800/60 border-white/5 hover:bg-slate-800 shadow-lg shadow-slate-950/20' 
+          : 'bg-white border-slate-100 shadow-sm hover:bg-slate-50'
+      }`}
+    >
+      <button 
+        onClick={(e) => { e.stopPropagation(); onToggleTodo(todo.id); }}
+        className={`flex-shrink-0 mt-0.5 transition-colors ${
+          todo.status === 'closed' ? 'text-emerald-500' : (isDarkMode ? 'text-slate-500 hover:text-slate-400' : 'text-slate-300 hover:text-slate-400')
+        }`}
+      >
+        {todo.status === 'closed' ? <CheckSquare size={20} /> : <Square size={20} />}
+      </button>
+      
+      <div className="flex-1 min-w-0">
+        <h4 className={`text-sm font-black break-words ${todo.status === 'closed' && (isDarkMode ? 'text-slate-500 line-through' : 'text-slate-400 line-through')} ${todo.status === 'open' && (isDarkMode ? 'text-slate-200' : 'text-slate-800')}`}>
+          {todo.task}
+        </h4>
+        <div className={`flex items-center gap-2 mt-2 text-[10px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+          <span className={`px-2 py-0.5 rounded-md ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>待办</span>
+          {todo.date && (
+            <span className={`px-2 py-0.5 rounded-full ${todo.status === 'open' && todo.date < todayStr ? 'bg-red-500/10 text-red-500' : (isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100')}`}>
+              {todo.date === todayStr ? '今天' : todo.date}
+            </span>
+          )}
+          {todo.time && (
+            <span className="flex items-center gap-1">
+              <Clock size={10} />
+              {todo.time}
+            </span>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const openTodos = filteredTodos.filter(t => t.status === 'open');
+  const closedTodos = filteredTodos.filter(t => t.status === 'closed');
+
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden relative pb-4">
+    <div className="w-full h-full flex flex-col overflow-hidden relative">
       {/* 1. Header */}
       <div className="mb-4 flex-shrink-0 pr-12">
         <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-100 text-rose-600'}`}>
+          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
             <ListTodo size={20} />
           </div>
           <h2 className={`text-2xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-            AI 事务
+            AI 待办
           </h2>
         </div>
         <p className={`text-sm font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-          统一管理你的日程与待办
+          智能助手助你高效规划并管理每一项待办任务
         </p>
       </div>
 
@@ -130,9 +150,9 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setTimeFilter(tab.id as any)}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest whitespace-nowrap transition-colors ${
+                className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest whitespace-nowrap transition-colors cursor-pointer ${
                   timeFilter === tab.id 
-                    ? (isDarkMode ? 'bg-rose-500 text-white' : 'bg-rose-500 text-white')
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
                     : (isDarkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')
                 }`}
               >
@@ -143,133 +163,100 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
         </div>
       </div>
 
-
-
       {/* 3. List */}
-      <div className={`flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3 rounded-[2rem] p-4 ${isDarkMode ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-100'}`}>
-        <AnimatePresence>
-          {filteredItems.length > 0 ? filteredItems.map(item => {
-            if (item.type === 'todo') {
-              const todo = item.data;
-              return (
-                <motion.div
-                  onClick={() => openPlanner({ id: todo.id, type: 'todo' })}
-                  key={`todo-${todo.id}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
-                    isDarkMode ? 'bg-slate-800/60 border-white/5 hover:bg-slate-800' : 'bg-white border-slate-100 shadow-sm hover:bg-slate-50'
-                  }`}
-                >
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onToggleTodo(todo.id); }}
-                    className={`flex-shrink-0 mt-0.5 transition-colors ${
-                      todo.status === 'closed' ? 'text-emerald-500' : (isDarkMode ? 'text-slate-500 hover:text-slate-400' : 'text-slate-300 hover:text-slate-400')
+      <div className={`flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3.5 rounded-[2rem] p-4 ${isDarkMode ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-100'}`}>
+        <AnimatePresence mode="wait">
+          {timeFilter === 'all' ? (
+            <div key="all-list" className="flex flex-col gap-3">
+              {/* Active / Uncompleted Section */}
+              {openTodos.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {openTodos.map(todo => renderTodoCard(todo))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                    暂无未完成的待办任务
+                  </p>
+                </div>
+              )}
+
+              {/* Completed Section (Collapsible) */}
+              {closedTodos.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-200/10">
+                  <button
+                    onClick={() => setCompletedCollapsed(!completedCollapsed)}
+                    className={`flex items-center justify-between w-full px-3 py-2 rounded-xl transition-colors text-xs font-black cursor-pointer ${
+                      isDarkMode ? 'text-slate-400 hover:bg-white/5' : 'text-slate-500 hover:bg-slate-200/50'
                     }`}
                   >
-                    {todo.status === 'closed' ? <CheckSquare size={20} /> : <Square size={20} />}
+                    <span className="flex items-center gap-1.5">
+                      <span>已完成 ({closedTodos.length})</span>
+                    </span>
+                    {completedCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                   </button>
                   
-                  <div className="flex-1 min-w-0">
-                    <h4 className={`text-sm font-black break-words ${todo.status === 'closed' && (isDarkMode ? 'text-slate-500 line-through' : 'text-slate-400 line-through')} ${todo.status === 'open' && (isDarkMode ? 'text-slate-200' : 'text-slate-800')}`}>
-                      {todo.task}
-                    </h4>
-                    <div className={`flex items-center gap-2 mt-2 text-[10px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      <span className={`px-2 py-0.5 rounded-md ${isDarkMode ? 'bg-rose-500/10 text-rose-400' : 'bg-rose-100 text-rose-600'}`}>待办</span>
-                      {todo.date && (
-                        <span className={`px-2 py-0.5 rounded-full ${todo.status === 'open' && todo.date < todayStr ? 'bg-red-500/10 text-red-500' : (isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100')}`}>
-                          {todo.date === todayStr ? '今天' : todo.date}
-                        </span>
-                      )}
-                      {todo.time && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={10} />
-                          {todo.time}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            } else {
-              const schedule = item.data;
-              return (
-                <motion.div
-                  onClick={() => openPlanner({ id: schedule.id, type: 'schedule' })}
-                  key={`schedule-${schedule.id}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
-                    isDarkMode ? 'bg-slate-800/60 border-white/5 hover:bg-slate-800' : 'bg-white border-slate-100 shadow-sm hover:bg-slate-50'
-                  }`}
-                >
-                  <div className={`flex-shrink-0 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-500'}`}>
-                    <CalendarIcon size={12} />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h4 className={`text-sm font-black break-words mt-0.5 ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
-                      {schedule.task}
-                    </h4>
-                    <div className={`flex items-center gap-2 mt-2 text-[10px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      <span className={`px-2 py-0.5 rounded-md ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>日程安排</span>
-                      {schedule.time && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={10} />
-                          {schedule.time}
-                        </span>
-                      )}
-                      {schedule.dayOfWeek !== undefined && (
-                        <span>
-                          周{['日','一','二','三','四','五','六'][schedule.dayOfWeek]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            }
-          }) : (
-            <div className={`flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed text-center h-full ${isDarkMode ? 'border-white/10' : 'border-slate-200'}`}>
-               <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                 当前筛选条件下没有匹配的事务
-               </p>
+                  <AnimatePresence>
+                    {!completedCollapsed && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="flex flex-col gap-3 mt-2 overflow-hidden"
+                      >
+                        {closedTodos.map(todo => renderTodoCard(todo))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div key="filtered-list" className="flex flex-col gap-3">
+              {filteredTodos.length > 0 ? (
+                filteredTodos.map(todo => renderTodoCard(todo))
+              ) : (
+                <div className="text-center py-12">
+                  <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                    当前筛选条件下没有待办
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Bottom Aether Prompt */}
-      <div className="absolute bottom-0 left-2 right-8 flex-shrink-0 z-20">
-        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3 transition-all shadow-xl backdrop-blur-xl ${
-          isDarkMode ? 'bg-rose-900/60 border-rose-500/30' : 'bg-rose-50/90 border-rose-200'
+      {/* 4. Bottom Aether Prompt */}
+      <div className="mt-2.5 flex-shrink-0 pt-1">
+        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3.5 transition-all shadow-xl backdrop-blur-xl ${
+          isDarkMode ? 'bg-indigo-900/60 border-indigo-500/30 shadow-indigo-950/50' : 'bg-indigo-50/90 border-indigo-200 shadow-indigo-100/20'
         }`}>
-          <div className="w-9 h-9 rounded-full bg-rose-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
-            <Bot size={16} className="text-rose-500" />
+          <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
+            <Bot size={16} className="text-indigo-500" />
             <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
             </span>
           </div>
-          <div className="flex flex-col gap-1 mt-0.5">
-            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>AETHER 提示</p>
+          <div className="flex flex-col gap-1 min-w-0 flex-1">
+            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>AETHER 提示</p>
             <p className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {(() => {
                  const openTodos = todos.filter(t => t.status === 'open');
                  const overdues = openTodos.filter(t => t.date && t.date < todayStr);
                  const upcoming = openTodos.filter(t => t.date === todayStr);
                  
-                 if (openTodos.length === 0) return '太棒了，所有待办均已清空！享受属于你的时间吧。';
+                 if (openTodos.length === 0) return '主人，太棒了！所有待办均已清空，尽情享受属于你的时间吧。';
  
-                 let summary = `目前共有 ${openTodos.length} 项待办。`;
+                 let summary = `主人，目前您共有 ${openTodos.length} 项待办进行中。`;
                  if (overdues.length > 0) {
-                   summary += `有 ${overdues.length} 项已逾期，建议优先处理！`;
+                   summary += `其中有 ${overdues.length} 项已逾期，建议优先处理哦！`;
                  } else if (upcoming.length > 0) {
                    summary += `其中 ${upcoming.length} 项将于今日到期，请把握进度。`;
                  } else {
-                    summary += `所有项均在计划内，事务流态健康。`;
+                   summary += `所有任务均在计划内，待办流态非常健康，记得按时完成哦！`;
                  }
                  return summary;
               })()}
