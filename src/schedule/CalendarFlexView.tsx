@@ -62,53 +62,83 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
   const firstDayOfMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1).getDay();
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const monthName = selectedDate.toLocaleString('zh-CN', { month: 'long' });
+  const monthName = `${selectedDate.getMonth() + 1}月`;
   const weekNumber = getWeekNumber(selectedDate);
 
-  const dayInfo = getTodayInfo(selectedDate);
+  const selectedDayInfo = getTodayInfo(selectedDate);
 
-  const getWeatherIcon = (condition: string) => {
-    if (condition.includes('晴')) return <Sun size={10} />;
-    if (condition.includes('云')) return <Cloud size={10} />;
-    if (condition.includes('雨')) return <CloudRain size={10} />;
-    return <Wind size={10} />;
+  const getRelativeDaysLabel = (target: Date, base: Date) => {
+    const t1 = new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
+    const t2 = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+    const diffDays = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return '今天';
+    if (diffDays === 1) return '明天';
+    if (diffDays === -1) return '昨天';
+    if (diffDays > 0) return `${diffDays}天后`;
+    return `${Math.abs(diffDays)}天前`;
   };
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden relative">
-      {/* 1. Header & Controls */}
-      <div className="mb-2 flex-shrink-0 pr-12 flex items-center justify-between">
+    <div className="w-full h-full flex flex-col justify-between overflow-hidden relative">
+      {/* 1. Standard App Title Bar - Left aligned, fixed standard style */}
+      <div className="mb-2 flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
             <CalendarIcon size={20} />
           </div>
-          <div>
-            <h2 className={`text-2xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-              AI 月历
-            </h2>
-          </div>
+          <h2 className={`text-2xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+            AI 月历
+          </h2>
         </div>
       </div>
 
-      {/* Dynamic Grid */}
-      <div className="flex-1 px-1 flex flex-col mt-1 overflow-y-auto pb-20">
-        <div className="flex items-baseline gap-2 mb-3 pl-2 flex-shrink-0">
-          <span className={`text-3xl font-black tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-            {selectedDate.getFullYear()}年
+      {/* 2. Month / Year / Week Header with Selected Date Info inline */}
+      <div className="flex items-center justify-between mb-2 pl-1 pr-1 flex-shrink-0">
+        <div className="flex items-baseline gap-2">
+          <span className={`text-xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+            {selectedDate.getFullYear()}年{monthName}
           </span>
-          <span className="text-xl font-black text-indigo-500 tracking-widest">{monthName}</span>
-          <span className={`text-xs py-1 px-2 ml-1 rounded-md font-black tracking-widest relative top-[-2px] ${isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${isDarkMode ? 'bg-indigo-500/10 text-indigo-500' : 'bg-indigo-50 text-indigo-600'}`}>
             第 {weekNumber} 周
           </span>
         </div>
-        <div className="grid grid-cols-7 gap-1.5 text-center mb-1.5 flex-shrink-0">
+
+        {/* Selected Date & Lunar information in the same row */}
+        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+          <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 rounded text-[10px] font-extrabold whitespace-nowrap">
+            {getRelativeDaysLabel(selectedDate, time)}
+          </span>
+          <span className={`font-black whitespace-nowrap ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>
+            {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日
+          </span>
+          <span className="text-[10px] font-medium whitespace-nowrap">
+            {selectedDayInfo.lunarDate.replace('农历', '')}
+          </span>
+          {selectedDayInfo.festival && (
+            <span className="text-rose-500 font-bold text-[9px] bg-rose-500/10 px-1 py-0.5 rounded whitespace-nowrap scale-95">
+              {selectedDayInfo.festival}
+            </span>
+          )}
+          {selectedDayInfo.solarTerm && (
+            <span className="text-emerald-500 font-bold text-[9px] bg-emerald-500/10 px-1 py-0.5 rounded whitespace-nowrap scale-95">
+              {selectedDayInfo.solarTerm}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Dynamic Grid Container - Standard Grid with overflow-hidden to eliminate scrollbars */}
+      <div className="flex-1 flex flex-col justify-start min-h-0 overflow-hidden px-0.5">
+        {/* Weekday Labels */}
+        <div className="grid grid-cols-7 gap-1 text-center mb-1.5 flex-shrink-0">
           {['日', '一', '二', '三', '四', '五', '六'].map((d, i) => (
-            <span key={d} className={`text-xs font-black uppercase tracking-[0.1em] ${i === 0 || i === 6 ? 'text-indigo-400' : 'text-slate-400'}`}>{d}</span>
+            <span key={d} className={`text-xs font-black uppercase tracking-wider ${i === 0 || i === 6 ? 'text-indigo-400' : (isDarkMode ? 'text-slate-400' : 'text-slate-400')}`}>{d}</span>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1.5">
-          {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} className="rounded-xl" />)}
+        {/* Month Days Grid */}
+        <div className="grid grid-cols-7 gap-1.5 pb-1">
+          {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} className="min-h-[50px]" />)}
           {monthDays.map(d => {
             const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d);
             const isTodayLocal = getLocalDateString(date) === getLocalDateString(time);
@@ -118,57 +148,58 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
             const cellInfo = getTodayInfo(date);
             const displayLunar = cellInfo.festival || cellInfo.solarTerm || cellInfo.lunarDate.replace(/农历.*月/, '');
 
-            // Weather prediction only for recent 7 days (today to today+6 days)
-            const todayTime = new Date(time.getFullYear(), time.getMonth(), time.getDate()).getTime();
-            const cellTime = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-            const diffDays = Math.round((cellTime - todayTime) / (1000 * 60 * 60 * 24));
-            const showWeather = diffDays >= 0 && diffDays < 7;
-
             return (
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 key={`m-${d}`} 
                 onClick={() => {
                   setSelectedDate(date);
                   openPlanner(undefined, date);
                 }}
-                className={`py-1 px-1 rounded-xl flex flex-col items-center justify-between transition-all relative overflow-hidden min-h-[52px] ${
-                  isTodayLocal 
-                    ? (isDarkMode ? 'bg-indigo-600/90 text-white shadow-lg shadow-indigo-900/50' : 'bg-indigo-500 text-white shadow-md shadow-indigo-200')
-                    : isSelected 
-                      ? (isDarkMode ? 'bg-slate-700 ring-2 ring-indigo-500 text-white' : 'bg-white ring-2 ring-indigo-500 text-slate-800 shadow-sm')
-                      : (isDarkMode ? 'bg-slate-800/40 text-slate-300 hover:bg-slate-700' : 'bg-white/60 border border-slate-100 hover:bg-white hover:shadow-sm text-slate-600')
+                className={`flex flex-col items-center justify-between py-1 px-0.5 rounded-xl transition-all relative min-h-[50px] cursor-pointer ${
+                  isSelected
+                    ? (isDarkMode 
+                        ? 'bg-indigo-950/60 ring-2 ring-indigo-500 text-white shadow-sm' 
+                        : 'bg-indigo-50/70 ring-2 ring-indigo-500 border-indigo-200 text-slate-800 shadow-sm')
+                    : (isDarkMode 
+                        ? 'bg-slate-800/30 border border-slate-800/50 text-slate-300 hover:bg-slate-800/60' 
+                        : 'bg-white/80 border border-slate-100 hover:bg-white hover:shadow-xs text-slate-700')
                 }`}
               >
-                <div className="flex w-full justify-between items-start px-0.5">
-                  <span className={`text-xl font-black leading-none ${isTodayLocal ? 'text-white' : (isDarkMode ? 'text-slate-200' : 'text-slate-800')}`}>
+                {/* Day Number */}
+                <div className="flex items-center justify-center relative w-full pt-0.5">
+                  <span className={`text-sm font-extrabold leading-none ${
+                    isTodayLocal 
+                      ? 'text-indigo-600 dark:text-indigo-400 font-black' 
+                      : (isDarkMode ? 'text-slate-200' : 'text-slate-800')
+                  }`}>
                     {d}
                   </span>
-                  {hasItems && (
-                    <div className={`w-1.5 h-1.5 mt-0.5 rounded-full ${isTodayLocal ? 'bg-white' : 'bg-indigo-500'}`} />
+                  {isTodayLocal && (
+                    <span className="absolute right-0.5 top-0 text-[8px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-1 rounded-full scale-90">
+                      今
+                    </span>
                   )}
                 </div>
 
-                <div className="flex flex-col items-center justify-end w-full gap-0 mt-0.5">
-                  <div className={`text-[9px] font-bold leading-none text-center truncate w-full ${
-                    cellInfo.festival 
-                      ? (isTodayLocal ? 'text-indigo-100' : 'text-rose-500') 
-                      : cellInfo.solarTerm
-                        ? (isTodayLocal ? 'text-indigo-100' : 'text-emerald-500')
-                        : (isTodayLocal ? 'text-indigo-200' : (isDarkMode ? 'text-slate-500' : 'text-slate-400'))
-                  }`}>
-                    {displayLunar}
-                  </div>
+                {/* Lunar / Festival text */}
+                <div className={`text-[10px] font-bold leading-tight my-0.5 text-center truncate max-w-full px-0.5 ${
+                  cellInfo.festival 
+                    ? 'text-rose-500' 
+                    : cellInfo.solarTerm
+                      ? 'text-emerald-500'
+                      : (isDarkMode ? 'text-slate-400' : 'text-slate-400')
+                }`}>
+                  {displayLunar}
+                </div>
 
-                  {/* Weather icon + temp only for the next 7 days */}
-                  {showWeather && (
-                    <div className={`flex items-center justify-center gap-0.5 text-[8px] font-bold mt-0.5 ${
-                      isTodayLocal ? 'text-white/90' : (isDarkMode ? 'text-sky-400/90' : 'text-sky-600/90')
-                    }`}>
-                      {getWeatherIcon(cellInfo.weather.condition)}
-                      <span className="scale-90 origin-left">{cellInfo.weather.temp}</span>
-                    </div>
+                {/* Schedule Blue Dot - Positioned cleanly with dedicated space to prevent overlapping */}
+                <div className="h-2 flex items-center justify-center flex-shrink-0">
+                  {hasItems ? (
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-xs" />
+                  ) : (
+                    <div className="w-1.5 h-1.5" />
                   )}
                 </div>
               </motion.button>
@@ -176,10 +207,10 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
           })}
         </div>
       </div>
-      
-      {/* Bottom Aether Prompt */}
-      <div className="absolute bottom-0 left-2 right-8 flex-shrink-0 z-20">
-        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3 transition-all shadow-xl backdrop-blur-xl ${
+
+      {/* 5. Bottom Aether Prompt - Standard App Style */}
+      <div className="mt-1 flex-shrink-0 pt-1">
+        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3.5 transition-all shadow-xl backdrop-blur-xl ${
           isDarkMode ? 'bg-indigo-900/60 border-indigo-500/30' : 'bg-indigo-50/90 border-indigo-200'
         }`}>
           <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
@@ -189,7 +220,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
             </span>
           </div>
-          <div className="flex flex-col gap-1 mt-0.5">
+          <div className="flex flex-col gap-1 min-w-0 flex-1">
             <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>AETHER 提示</p>
             <p className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
               {(() => {
@@ -204,7 +235,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                 const monthFestivals = monthDays.map(d => getTodayInfo(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d)).festival).filter(Boolean);
                 const uniqueFestivals = Array.from(new Set(monthFestivals)).slice(0, 2);
 
-                return `主人，本月是${monthName}，您有 ${monthSchedulesCount} 项日程安排。${uniqueFestivals.length > 0 ? `本月包含 ${uniqueFestivals.join(' 和 ')} 等重要节日。` : ''}季节更替，请注意实时天气变化！`;
+                return `主人，本月是${monthName}，您有 ${monthSchedulesCount} 项日程安排。${uniqueFestivals.length > 0 ? `包含 ${uniqueFestivals.join(' 和 ')} 等重要节日。` : ''}记得合理规划时间哦！`;
               })()}
             </p>
           </div>
@@ -218,7 +249,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
         schedules={schedules}
         todos={todos}
         initialItem={activePlannerItem}
-        todayInfo={dayInfo}
+        todayInfo={selectedDayInfo}
         time={time}
       />
     </div>

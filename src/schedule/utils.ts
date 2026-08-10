@@ -72,12 +72,17 @@ export const getTodayInfo = (date: Date) => {
     "晚上早点休息，保证充足的睡眠。",
     "保持微笑，好运会伴随你一整天！"
   ];
-  
+
+  const YI_LIST = ["沐浴 理发 会亲友", "出行 祈福 交易", "修造 动土 纳财", "祭祀 祈福 求嗣", "嫁娶 纳采 出行", "安机械 破土 纳财"];
+  const JI_LIST = ["开市 入宅 动土", "安葬 伐木 作灶", "置产 嫁娶 移徙", "词讼 针灸 破土", "开仓 出货 探病", "行舟 掘井 动土"];
+
   return {
     festival,
     solarTerm,
     weather,
     lunarDate,
+    yi: YI_LIST[hash % YI_LIST.length],
+    ji: JI_LIST[hash % JI_LIST.length],
     aiAdvice: adviceList[day % adviceList.length]
   };
 };
