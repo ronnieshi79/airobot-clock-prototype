@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Sparkles, Clock, CheckSquare, Square, X, CalendarIcon, CloudSun, CalendarDays, Bot, Target, Brain, ChevronRight } from 'lucide-react';
+import { Calendar, Sparkles, Clock, CheckSquare, Square, X, CalendarIcon, CloudSun, CalendarDays, Bot, Target, Brain, ChevronRight, Bell } from 'lucide-react';
 import { ScheduleItem, TodoItem, MainCategory, SubCategory } from '../types';
 import { getTodayInfo } from './utils';
 import { RecommendationStrip } from '../components/RecommendationStrip';
@@ -14,6 +14,7 @@ interface CalendarHomeViewProps {
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
   onShowLogbook: () => void;
   onShowPlanner?: (item?: ScheduleItem | TodoItem, date?: Date) => void;
+  onTriggerReminder?: (item: { type: 'schedule' | 'todo'; item: ScheduleItem | TodoItem }) => void;
 }
 
 export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
@@ -23,7 +24,8 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   time,
   onNavigate,
   onShowLogbook,
-  onShowPlanner
+  onShowPlanner,
+  onTriggerReminder
 }) => {
   const [isPlanningOpen, setIsPlanningOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{id: string, type: 'schedule' | 'todo'} | null>(null);
@@ -126,7 +128,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
                     key={`h-item-${idx}`}
-                    onClick={() => handleOpenPlanner(item.data.id, item.type)}
+                    onClick={() => onTriggerReminder?.({ type: item.type, item: item.data })}
                     className={`flex items-center gap-4 p-5 rounded-[1.5rem] shrink-0 cursor-pointer transition-all ${
                       isDarkMode ? 'bg-slate-700/50 hover:bg-slate-600 border border-transparent' : 'bg-white shadow-md shadow-slate-200/50 border border-slate-100 hover:border-slate-300'
                     }`}
@@ -135,6 +137,16 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                     <span className={`text-sm font-bold truncate flex-1 ${item.type === 'todo' && item.data.status === 'closed' ? 'line-through opacity-50' : ''} ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
                       {item.data.task}
                     </span>
+                    <div
+                      className={`p-1.5 rounded-xl transition-all flex items-center justify-center shrink-0 ${
+                        isDarkMode 
+                          ? 'text-indigo-400 bg-indigo-500/10' 
+                          : 'text-indigo-600 bg-indigo-50'
+                      }`}
+                      title="点击查看日程提醒卡"
+                    >
+                      <Bell size={13} />
+                    </div>
                   </motion.div>
                 );
               })}

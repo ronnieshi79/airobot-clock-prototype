@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ListTodo, CheckSquare, Square, Clock, Plus, Calendar as CalendarIcon, Sparkles, Bot, ChevronUp, ChevronDown } from 'lucide-react';
+import { ListTodo, CheckSquare, Square, Clock, Plus, Calendar as CalendarIcon, Sparkles, Bot, ChevronUp, ChevronDown, Bell } from 'lucide-react';
 import { TodoItem, ScheduleItem, MainCategory, SubCategory } from '../types';
 import { SchedulePlannerOverlay } from './SchedulePlannerOverlay';
 import { getTodayInfo } from './utils';
@@ -15,6 +15,7 @@ interface CalendarListViewProps {
   onAddTodo: (task: string, date?: string, time?: string) => void;
   onToggleSchedule: (id: string) => void;
   onShowPlanner?: (item?: ScheduleItem | TodoItem, date?: Date) => void;
+  onTriggerReminder?: (item: { type: 'schedule' | 'todo'; item: ScheduleItem | TodoItem }) => void;
 }
 
 export const CalendarListView: React.FC<CalendarListViewProps> = ({ 
@@ -26,7 +27,8 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   onToggleTodo,
   onAddTodo,
   onToggleSchedule,
-  onShowPlanner
+  onShowPlanner,
+  onTriggerReminder
 }) => {
   const [timeFilter, setTimeFilter] = useState<'all' | 'open' | 'closed' | 'today' | 'week'>('all');
   const [completedCollapsed, setCompletedCollapsed] = useState(true);
@@ -80,7 +82,7 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
 
   const renderTodoCard = (todo: TodoItem) => (
     <motion.div
-      onClick={() => openPlanner({ id: todo.id, type: 'todo' })}
+      onClick={() => onTriggerReminder?.({ type: 'todo', item: todo })}
       key={`todo-${todo.id}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -118,6 +120,15 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
             </span>
           )}
         </div>
+      </div>
+
+      <div 
+        className={`flex-shrink-0 p-1.5 rounded-xl transition-all self-center ${
+          isDarkMode ? 'text-indigo-400 bg-indigo-500/10' : 'text-indigo-600 bg-indigo-50'
+        }`}
+        title="点击查看提醒卡"
+      >
+        <Bell size={14} />
       </div>
     </motion.div>
   );

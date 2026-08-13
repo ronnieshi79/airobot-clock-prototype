@@ -45,7 +45,7 @@ import { GoogleGenAI, Modality, LiveServerMessage } from "@google/genai";
 import { HomeMenu } from './components/HomeMenu';
 import { AlarmView, TimeView, useClock, TimeOverlay, AlarmOverlay, LogbookOverlay } from './clock';
 import { AetherRobot, useAether } from './airobot';
-import { useSchedule, TodayView, CalendarView, ScheduleView, CalendarHomeView, CalendarFlexView, CalendarListView, SchedulePlannerOverlay, getTodayInfo } from './calendar';
+import { useSchedule, TodayView, CalendarView, ScheduleView, CalendarHomeView, CalendarFlexView, CalendarListView, SchedulePlannerOverlay, CalendarReminderOverlay, getTodayInfo } from './calendar';
 import { usePodcast, PodcastHomeView, PodcastPlayerView, PodcastLibraryView, PodcastSubscribeView, PodcastOverlay } from './podcast';
 import { MainCategory, SubCategory, ScheduleItem, TodoItem, Message, AlarmItem, ActiveCard } from './types';
 import { SkeuomorphicDial } from './components/SkeuomorphicDial';
@@ -60,10 +60,12 @@ export default function App() {
   const [subCategory, setSubCategory] = useState<SubCategory>('home');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<'focus' | 'timer' | 'alarm' | 'podcast' | 'logbook' | null>(null);
+  const [activeReminder, setActiveReminder] = useState<{ type: 'schedule' | 'todo'; item: ScheduleItem | TodoItem } | null>(null);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [isPlannerOpen, setIsPlannerOpen] = useState(false);
   const [plannerInitialItem, setPlannerInitialItem] = useState<ScheduleItem | TodoItem | undefined>(undefined);
   
+  const triggeredReminders = React.useRef<Set<string>>(new Set());
   const [lastRingingAlarmId, setLastRingingAlarmId] = useState<string | null>(null);
   
   // AI Robot Module
@@ -202,6 +204,52 @@ export default function App() {
       setLastRingingAlarmId(ringingAlarmId);
     }
   }, [ringingAlarmId]);
+
+  const getLocalDateString = (d: Date) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  // Auto-trigger schedule/todo reminders when their time matches the current clock time
+  useEffect(() => {
+    if (!time) return;
+    const todayStr = getLocalDateString(time);
+    const currentTimeStr = time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const currentDayOfWeek = time.getDay();
+
+    // 1. Check for matching uncompleted schedule
+    const matchingSchedule = schedules.find(s => {
+      if (s.completed) return false;
+      const dateMatch = s.date ? s.date === todayStr : s.dayOfWeek === currentDayOfWeek;
+      return dateMatch && s.time === currentTimeStr;
+    });
+
+    if (matchingSchedule) {
+      const key = `schedule-${matchingSchedule.id}-${currentTimeStr}`;
+      if (!triggeredReminders.current.has(key)) {
+        triggeredReminders.current.add(key);
+        setActiveReminder({ type: 'schedule', item: matchingSchedule });
+        // Let Aether speak the reminder
+        handleRobotChat(`日程提醒到了：《${matchingSchedule.task}》`, 'alarm', `你是AETHER，当前用户的一项重要日程“${matchingSchedule.task}”已经到了。请用拟人化、活泼并带有拟物感的语气提醒用户，让他赶紧处理，不超过两句话。`);
+      }
+    }
+
+    // 2. Check for matching open todo
+    const matchingTodo = todos.find(t => {
+      if (t.status === 'closed') return false;
+      const dateMatch = t.date ? t.date === todayStr : true;
+      return dateMatch && t.time === currentTimeStr;
+    });
+
+    if (matchingTodo) {
+      const key = `todo-${matchingTodo.id}-${currentTimeStr}`;
+      if (!triggeredReminders.current.has(key)) {
+        triggeredReminders.current.add(key);
+        setActiveReminder({ type: 'todo', item: matchingTodo });
+        // Let Aether speak the reminder
+        handleRobotChat(`待办提醒到了：《${matchingTodo.task}》`, 'alarm', `你是AETHER，当前用户的一项重要待办“${matchingTodo.task}”已经到了。请用拟人化、活泼并带有拟物感的语气提醒用户，让他赶紧处理，不超过两句话。`);
+      }
+    }
+  }, [time, schedules, todos]);
 
   // Auto show alarm overlay when ringing
   useEffect(() => {
@@ -959,6 +1007,7 @@ export default function App() {
                     setPlannerInitialItem(item);
                     setIsPlannerOpen(true);
                   }}
+                  onTriggerReminder={(reminder) => setActiveReminder(reminder)}
                 />
               )}
               {subCategory === 'calendar-flex' && (
@@ -991,6 +1040,7 @@ export default function App() {
                     setPlannerInitialItem(item);
                     setIsPlannerOpen(true);
                   }}
+                  onTriggerReminder={(reminder) => setActiveReminder(reminder)}
                 />
               )}
             </div>
@@ -1168,6 +1218,20 @@ export default function App() {
               selectedDate={selectedDate}
               todayInfo={getTodayInfo(selectedDate)}
               time={time}
+            />
+
+            <CalendarReminderOverlay
+              show={activeReminder !== null}
+              isDarkMode={isDarkMode}
+              reminderItem={activeReminder}
+              onClose={() => setActiveReminder(null)}
+              onComplete={(id, type) => {
+                if (type === 'todo') {
+                  toggleTodo(id);
+                } else {
+                  toggleSchedule(id);
+                }
+              }}
             />
           </div>
         </div>

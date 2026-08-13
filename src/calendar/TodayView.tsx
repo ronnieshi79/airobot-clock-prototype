@@ -1,19 +1,21 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, Brain, Bot } from 'lucide-react';
-import { ScheduleItem } from '../types';
+import { Sparkles, Brain, Bot, Bell } from 'lucide-react';
+import { ScheduleItem, TodoItem } from '../types';
 import { getTodayInfo } from './utils';
 
 interface TodayViewProps {
   isDarkMode: boolean;
   schedules: ScheduleItem[];
   selectedDate?: Date;
+  onTriggerReminder?: (item: { type: 'schedule' | 'todo'; item: ScheduleItem | TodoItem }) => void;
 }
 
 export const TodayView: React.FC<TodayViewProps> = ({
   isDarkMode,
   schedules,
   selectedDate = new Date(),
+  onTriggerReminder
 }) => {
   const targetDate = selectedDate;
   const todayInfo = getTodayInfo(targetDate);
@@ -98,10 +100,14 @@ export const TodayView: React.FC<TodayViewProps> = ({
                     initial={{ x: 20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: idx * 0.1 }}
-                    className={`p-4 rounded-3xl flex items-center gap-4 transition-all hover:scale-[1.02] ${isDarkMode ? 'bg-white/5 border border-white/5' : 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-slate-50'}`}
+                    onClick={() => onTriggerReminder?.({ type: 'schedule', item })}
+                    className={`p-4 rounded-3xl flex items-center gap-4 transition-all hover:scale-[1.02] cursor-pointer ${isDarkMode ? 'bg-white/5 border border-white/5' : 'bg-white shadow-[0_10px_30px_rgba(0,0,0,0.03)] border border-slate-50'}`}
                   >
-                    <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]" />
-                    <span className={`text-base font-black ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{item.task}</span>
+                    <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)] flex-shrink-0" />
+                    <span className={`text-base font-black flex-1 truncate ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{item.task}</span>
+                    <div className={`p-1.5 rounded-xl ${isDarkMode ? 'text-indigo-400 bg-indigo-500/10' : 'text-indigo-600 bg-indigo-50'}`}>
+                      <Bell size={14} />
+                    </div>
                   </motion.div>
                 ))}
               </div>
