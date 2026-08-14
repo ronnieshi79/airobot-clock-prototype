@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Clock, CheckSquare, Power, GripVertical, ChevronRight, ChevronLeft, Sparkles, CloudSun, CalendarIcon, X, Plus, Minimize2, Trash2, Bot, Gift, CalendarDays } from 'lucide-react';
+import { Mic, Clock, CheckSquare, Power, GripVertical, ChevronRight, ChevronLeft, Sparkles, CloudSun, CalendarIcon, X, Plus, Minimize2, Trash2, Bot, Gift, CalendarDays, Heart } from 'lucide-react';
 import { ScheduleItem, TodoItem, ScheduleType, WeatherInfo } from '../types';
 import { getTodayInfo } from './utils';
 
@@ -118,10 +118,10 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
     setSelectedType('regular');
   };
 
-  // Find all-day events (Festivals & Birthdays) for active date
+  // Find all-day events (Festivals, Birthdays, Anniversaries) for active date
   const allDayEvents = schedules.filter(s => {
-    if (s.isAllDay || s.type === 'festival' || s.type === 'birthday') {
-      if (s.repeat === 'yearly' || s.type === 'festival' || s.type === 'birthday') {
+    if (s.isAllDay || s.type === 'festival' || s.type === 'birthday' || s.type === 'anniversary') {
+      if (s.repeat === 'yearly' || s.type === 'festival' || s.type === 'birthday' || s.type === 'anniversary') {
         if (s.date) {
           const parts = s.date.split('-');
           const md = parts.length === 3 ? `${parts[1]}-${parts[2]}` : s.date;
@@ -135,7 +135,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
 
   // Sync initial items and selections for the timeline
   useEffect(() => {
-    const timedSchedules = schedules.filter(s => !s.isAllDay && s.type !== 'festival' && s.type !== 'birthday');
+    const timedSchedules = schedules.filter(s => !s.isAllDay && s.type !== 'festival' && s.type !== 'birthday' && s.type !== 'anniversary');
     
     const seenIds = new Set<string>();
     const uniqueRawItems: any[] = [];
@@ -385,12 +385,22 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                           key={evt.id} 
                           className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-[11px] font-black shadow-sm shrink-0 ${
                             evt.type === 'birthday' 
-                              ? 'bg-pink-500/25 border-pink-400/40 text-pink-300' 
-                              : 'bg-rose-500/25 border-rose-400/40 text-rose-300'
+                              ? 'bg-rose-500/25 border-rose-400/40 text-rose-300' 
+                              : evt.type === 'anniversary'
+                                ? 'bg-amber-500/25 border-amber-400/40 text-amber-300'
+                                : 'bg-rose-500/25 border-rose-400/40 text-rose-300'
                           }`}
                         >
-                          {evt.type === 'birthday' ? <Gift size={12} className="text-pink-400" /> : <Sparkles size={12} className="text-rose-400" />}
-                          <span>{evt.task}</span>
+                          {evt.type === 'birthday' ? (
+                            <Gift size={12} className="text-rose-400 animate-bounce" />
+                          ) : evt.type === 'anniversary' ? (
+                            <Heart size={12} className="text-amber-400 animate-pulse" />
+                          ) : (
+                            <Sparkles size={12} className="text-rose-400" />
+                          )}
+                          <span>
+                            {evt.type === 'birthday' ? `🎂 ${evt.task}` : evt.type === 'anniversary' ? `🌟 ${evt.task}` : evt.task}
+                          </span>
                           <span className="text-[9px] font-bold opacity-75 bg-white/10 px-1 py-0.5 rounded">
                             {evt.repeat === 'yearly' ? '每年全天' : '全天'}
                           </span>

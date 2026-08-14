@@ -123,15 +123,16 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
             const isSelected = getLocalDateString(date) === getLocalDateString(selectedDate);
             
             const hasItems = schedules.some(s => isScheduleOnDate(s, date));
-            const dayFestivalsOrBirthdays = schedules.filter(s => (s.type === 'festival' || s.type === 'birthday') && isScheduleOnDate(s, date));
+            const daySpecialEvents = schedules.filter(s => (s.type === 'festival' || s.type === 'birthday' || s.type === 'anniversary') && isScheduleOnDate(s, date));
             
             const cellInfo = getTodayInfo(date);
-            const displayLunar = dayFestivalsOrBirthdays.length > 0
-              ? dayFestivalsOrBirthdays[0].task
+            const displayLunar = daySpecialEvents.length > 0
+              ? daySpecialEvents[0].task
               : (cellInfo.festival || cellInfo.solarTerm || cellInfo.lunarDate.replace(/农历.*月/, ''));
 
-            const hasFestival = !!cellInfo.festival || dayFestivalsOrBirthdays.some(s => s.type === 'festival');
-            const hasBirthday = dayFestivalsOrBirthdays.some(s => s.type === 'birthday');
+            const hasFestival = !!cellInfo.festival || daySpecialEvents.some(s => s.type === 'festival');
+            const hasBirthday = daySpecialEvents.some(s => s.type === 'birthday');
+            const hasAnniversary = daySpecialEvents.some(s => s.type === 'anniversary');
 
             return (
               <motion.button
@@ -167,15 +168,17 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                   )}
                 </div>
 
-                {/* Lunar / Festival / Birthday text */}
+                {/* Lunar / Festival / Birthday / Anniversary text */}
                 <div className={`text-[10px] font-bold leading-tight my-0.5 text-center truncate max-w-full px-0.5 ${
                   hasBirthday
-                    ? 'text-pink-500'
-                    : hasFestival
-                      ? 'text-rose-500' 
-                      : cellInfo.solarTerm
-                        ? 'text-emerald-500'
-                        : (isDarkMode ? 'text-slate-400' : 'text-slate-400')
+                    ? 'text-rose-500 font-black'
+                    : hasAnniversary
+                      ? 'text-amber-500 font-black'
+                      : hasFestival
+                        ? 'text-rose-500 font-black' 
+                        : cellInfo.solarTerm
+                          ? 'text-emerald-500'
+                          : (isDarkMode ? 'text-slate-400' : 'text-slate-400')
                 }`}>
                   {displayLunar}
                 </div>
@@ -184,7 +187,13 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                 <div className="h-2 flex items-center justify-center flex-shrink-0">
                   {hasItems ? (
                     <div className={`w-1.5 h-1.5 rounded-full shadow-xs ${
-                      hasBirthday ? 'bg-pink-500' : hasFestival ? 'bg-rose-500' : 'bg-indigo-500'
+                      hasBirthday 
+                        ? 'bg-rose-500' 
+                        : hasAnniversary
+                          ? 'bg-amber-500'
+                          : hasFestival 
+                            ? 'bg-rose-500' 
+                            : 'bg-indigo-500'
                     }`} />
                   ) : (
                     <div className="w-1.5 h-1.5" />

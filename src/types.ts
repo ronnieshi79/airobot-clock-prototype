@@ -8,7 +8,7 @@ export interface Message {
   isStreaming?: boolean;
 }
 
-export type ScheduleType = 'festival' | 'birthday' | 'regular' | 'todo';
+export type ScheduleType = 'regular' | 'todo' | 'birthday' | 'anniversary' | 'festival';
 
 export interface ScheduleItem {
   id: string;

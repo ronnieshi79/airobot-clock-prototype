@@ -11,8 +11,8 @@ export const isScheduleOnDate = (schedule: ScheduleItem, targetDate: Date) => {
   const targetDay = String(targetDate.getDate()).padStart(2, '0');
   const targetMonthDay = `${targetMonth}-${targetDay}`;
 
-  // For annual festivals and birthdays
-  if (schedule.repeat === 'yearly' || schedule.type === 'festival' || schedule.type === 'birthday') {
+  // For annual festivals, birthdays and anniversaries
+  if (schedule.repeat === 'yearly' || schedule.type === 'festival' || schedule.type === 'birthday' || schedule.type === 'anniversary') {
     if (schedule.date) {
       const parts = schedule.date.split('-');
       if (parts.length === 3) {
@@ -97,7 +97,20 @@ export const useSchedule = () => {
       leadTime: '1day',
       createdAt: Date.now() - 700000,
     },
-    // 3. 普通日程
+    // 3. 纪念日 (默认全天，每年重复)
+    {
+      id: 'anniv-1',
+      task: '相识纪念日',
+      type: 'anniversary',
+      isAllDay: true,
+      repeat: 'yearly',
+      date: todayStr, // Occurs today for instant celebration
+      completed: false,
+      reminderEnabled: true,
+      leadTime: '1day',
+      createdAt: Date.now() - 650000,
+    },
+    // 4. 普通日程
     {
       id: 'sched-1',
       time: '08:00',

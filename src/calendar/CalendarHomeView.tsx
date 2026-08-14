@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Sparkles, Clock, CheckSquare, Square, X, CalendarIcon, CloudSun, CalendarDays, Bot, Target, Brain, ChevronRight, Bell, Gift } from 'lucide-react';
+import { Calendar, Sparkles, Clock, CheckSquare, Square, X, CalendarIcon, CloudSun, CalendarDays, Bot, Target, Brain, ChevronRight, Bell, Gift, Heart } from 'lucide-react';
 import { ScheduleItem, TodoItem, MainCategory, SubCategory, ScheduleType } from '../types';
 import { getTodayInfo } from './utils';
 import { isScheduleOnDate } from './useSchedule';
@@ -33,8 +33,12 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   
   const todayInfo = getTodayInfo(time);
   
-  // Find all schedules matching today (including yearly festivals and birthdays)
+  // Find all schedules matching today (including yearly festivals, birthdays and anniversaries)
   const todaySchedules = schedules.filter(s => isScheduleOnDate(s, time));
+
+  // Special commemorative items today
+  const todayBirthdays = todaySchedules.filter(s => s.type === 'birthday');
+  const todayAnniversaries = todaySchedules.filter(s => s.type === 'anniversary');
 
   const handleOpenPlanner = (id?: string, type?: 'schedule' | 'todo' | ScheduleType) => {
     let itemObj: ScheduleItem | TodoItem | undefined = undefined;
@@ -58,18 +62,21 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
       case 'festival':
         return <Sparkles size={13} className="text-rose-500" />;
       case 'birthday':
-        return <Gift size={13} className="text-pink-500" />;
+        return <Gift size={13} className="text-rose-500" />;
+      case 'anniversary':
+        return <Heart size={13} className="text-amber-500" />;
       case 'todo':
         return <CheckSquare size={13} className="text-emerald-500" />;
       case 'regular':
       default:
-        return <Clock size={13} className="text-amber-500" />;
+        return <Clock size={13} className="text-blue-500" />;
     }
   };
 
   const getTypeBadgeLabel = (item: ScheduleItem) => {
-    if (item.type === 'festival') return '节日';
-    if (item.type === 'birthday') return '生日';
+    if (item.type === 'festival') return '🏮 节日';
+    if (item.type === 'birthday') return '🎂 生日';
+    if (item.type === 'anniversary') return '🌟 纪念日';
     if (item.type === 'todo') return '待办';
     return item.time || '日程';
   };
@@ -113,28 +120,71 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
          </div>
 
          {/* Right Info Area Card */}
-         <div className={`flex-1 min-w-0 p-6 rounded-[2.5rem] flex flex-col ${isDarkMode ? 'bg-slate-800/60 border border-white/5' : 'bg-slate-50 border border-slate-100'} shadow-sm`}>
-            {/* Weather & Date Tags row */}
-            <div className="flex flex-wrap gap-3 items-center mb-6">
-               <span className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold shadow-sm ${isDarkMode ? 'bg-gradient-to-br from-sky-500/20 to-sky-600/10 text-sky-400 border border-sky-500/20' : 'bg-gradient-to-br from-[#e0f2fe] to-[#bae6fd]/50 text-sky-700 border border-[#bae6fd]'}`}>
-                 <CloudSun size={15} />
-                 {todayInfo.weather.condition} {todayInfo.weather.temp}
+         <div className={`flex-1 min-w-0 p-6 pb-6 rounded-[2.5rem] flex flex-col relative ${isDarkMode ? 'bg-slate-800/60 border border-white/5' : 'bg-slate-50 border border-slate-100'} shadow-sm`}>
+            {/* Weather & Date Tags row (Single row: Weather + Lunar + Special event name, no wrap) */}
+            <div className="flex items-center gap-2 mb-4 overflow-hidden flex-nowrap">
+               {/* Weather tag */}
+               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold shadow-sm shrink-0 ${isDarkMode ? 'bg-gradient-to-br from-sky-500/20 to-sky-600/10 text-sky-400 border border-sky-500/20' : 'bg-gradient-to-br from-[#e0f2fe] to-[#bae6fd]/50 text-sky-700 border border-[#bae6fd]'}`}>
+                 <CloudSun size={13} className="shrink-0" />
+                 <span className="whitespace-nowrap">{todayInfo.weather.condition} {todayInfo.weather.temp}</span>
                </span>
-               <span className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold shadow-sm ${isDarkMode ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-400 border border-amber-500/20' : 'bg-gradient-to-br from-amber-100 to-orange-50 text-amber-700 border border-amber-200'}`}>
-                 {todayInfo.lunarDate}
+               
+               {/* Lunar date */}
+               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold shadow-sm shrink-0 ${isDarkMode ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-400 border border-amber-500/20' : 'bg-gradient-to-br from-amber-100 to-orange-50 text-amber-700 border border-amber-200'}`}>
+                 <span className="whitespace-nowrap">{todayInfo.lunarDate}</span>
                </span>
-               <span className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold shadow-sm ${todayInfo.festival ? (isDarkMode ? 'bg-gradient-to-br from-rose-500/20 to-pink-500/10 text-rose-400 border border-rose-500/20' : 'bg-gradient-to-br from-rose-100 to-pink-50 text-rose-700 border border-rose-200') : (isDarkMode ? 'bg-slate-700/50 text-slate-300' : 'bg-white shadow-sm text-slate-500 border border-slate-200')}`}>
-                 {todayInfo.festival ? <Sparkles size={15} /> : <CalendarDays size={15} />}
-                 {todayInfo.festival ? todayInfo.festival : '无节假日'}
-               </span>
+
+               {/* Single Special Tag (Birthday / Anniversary / Festival - Name only, placed after Lunar, single-line guaranteed) */}
+               {todayBirthdays.length > 0 ? (
+                 <button
+                   onClick={() => onTriggerReminder?.({ type: 'birthday', item: todayBirthdays[0] })}
+                   className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-2xl text-xs font-bold shadow-sm transition-all hover:scale-105 cursor-pointer shrink-0 min-w-0 max-w-[130px] ${
+                     isDarkMode 
+                       ? 'bg-gradient-to-br from-rose-500/25 via-pink-500/20 to-rose-600/15 text-rose-300 border border-rose-400/40 shadow-rose-950/40' 
+                       : 'bg-gradient-to-br from-rose-100 to-pink-50 text-rose-700 border border-rose-300 shadow-rose-100'
+                   }`}
+                   title={`今日生日：${todayBirthdays[0].task}`}
+                 >
+                   <Gift size={13} className="text-rose-500 shrink-0 animate-bounce" />
+                   <span className="truncate">{todayBirthdays[0].task}</span>
+                 </button>
+               ) : todayAnniversaries.length > 0 ? (
+                 <button
+                   onClick={() => onTriggerReminder?.({ type: 'anniversary', item: todayAnniversaries[0] })}
+                   className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-2xl text-xs font-bold shadow-sm transition-all hover:scale-105 cursor-pointer shrink-0 min-w-0 max-w-[130px] ${
+                     isDarkMode 
+                       ? 'bg-gradient-to-br from-amber-500/25 via-orange-500/20 to-amber-600/15 text-amber-300 border border-amber-400/40 shadow-amber-950/40' 
+                       : 'bg-gradient-to-br from-amber-100 to-orange-50 text-amber-700 border border-amber-300 shadow-amber-100'
+                   }`}
+                   title={`今日纪念日：${todayAnniversaries[0].task}`}
+                 >
+                   <Heart size={13} className="text-amber-500 shrink-0 animate-pulse" />
+                   <span className="truncate">{todayAnniversaries[0].task}</span>
+                 </button>
+               ) : todayInfo.festival ? (
+                 <span 
+                   className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-2xl text-xs font-bold shadow-sm shrink-0 min-w-0 max-w-[130px] ${
+                     isDarkMode 
+                       ? 'bg-gradient-to-br from-rose-500/25 to-pink-500/15 text-rose-400 border border-rose-500/30' 
+                       : 'bg-gradient-to-br from-rose-100 to-pink-50 text-rose-700 border border-rose-200'
+                   }`}
+                   title={`节日：${todayInfo.festival}`}
+                 >
+                   <Sparkles size={13} className="text-rose-500 shrink-0 animate-pulse" />
+                   <span className="truncate">{todayInfo.festival}</span>
+                 </span>
+               ) : null}
             </div>
 
             {/* Today's Affairs / Schedules */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
                <h4 className={`text-xs font-black tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>今日重要日程与待办</h4>
+               <span className={`text-[11px] font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                 精选事项
+               </span>
             </div>
             
-            <div className="flex flex-col gap-3.5 h-[240px]">
+            <div className="flex flex-col gap-2.5">
               {todaySchedules.slice(0, 3).map((item, idx) => {
                 const itemType = item.type || 'regular';
                 const isItemClosed = item.status === 'closed' || item.completed;
@@ -145,9 +195,10 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                     transition={{ delay: idx * 0.05 }}
                     key={`h-item-${item.id}`}
                     onClick={() => onTriggerReminder?.({ type: itemType, item })}
-                    className={`flex items-center gap-4 p-4 rounded-[1.5rem] shrink-0 cursor-pointer transition-all ${
+                    className={`flex items-center gap-3.5 p-3 rounded-[1.3rem] shrink-0 cursor-pointer transition-all hover:scale-[1.01] ${
                       isDarkMode ? 'bg-slate-700/50 hover:bg-slate-600 border border-transparent' : 'bg-white shadow-md shadow-slate-200/50 border border-slate-100 hover:border-slate-300'
                     }`}
+                    title="点击打开 AI 日程卡片"
                   >
                     <div className="flex items-center justify-center w-7 h-7 rounded-xl bg-black/5 dark:bg-white/10 shrink-0 ml-1">
                       {renderTypeIcon(itemType)}
@@ -159,17 +210,23 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                       </span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-md ${
-                          itemType === 'festival' || itemType === 'birthday' 
+                          itemType === 'birthday' 
                             ? 'bg-rose-500/15 text-rose-500' 
-                            : itemType === 'todo'
-                              ? 'bg-emerald-500/15 text-emerald-600'
-                              : 'bg-amber-500/15 text-amber-600'
+                            : itemType === 'anniversary'
+                              ? 'bg-amber-500/15 text-amber-600'
+                              : itemType === 'festival'
+                                ? 'bg-rose-500/15 text-rose-500'
+                                : itemType === 'todo'
+                                  ? 'bg-emerald-500/15 text-emerald-600'
+                                  : 'bg-blue-500/15 text-blue-600'
                         }`}>
                           {getTypeBadgeLabel(item)}
                         </span>
-                        {item.isAllDay && (
+                        {item.isAllDay ? (
                           <span className="text-[9px] font-bold text-slate-400">全天</span>
-                        )}
+                        ) : item.time ? (
+                          <span className="text-[9px] font-bold text-slate-400 font-mono">{item.time}</span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -179,7 +236,6 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                           ? 'text-indigo-400 bg-indigo-500/10' 
                           : 'text-indigo-600 bg-indigo-50'
                       }`}
-                      title="点击查看日程提醒卡"
                     >
                       <Bell size={13} />
                     </div>
@@ -191,15 +247,26 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                   <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>今日无特定日程事务</span>
                 </div>
               )}
-              {todaySchedules.length > 3 && (
-                 <button 
-                   onClick={() => handleOpenPlanner()}
-                   className={`mt-1 flex items-center justify-center font-bold py-2 rounded-[1.2rem] hover:opacity-80 transition-opacity cursor-pointer text-xs ${isDarkMode ? 'bg-slate-700/30 text-slate-400 hover:text-slate-300' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
-                 >
-                   查看其余 {todaySchedules.length - 3} 项日程安排 <ChevronRight size={14} className="ml-1" />
-                 </button>
-              )}
             </div>
+
+            {/* Hanging Bottom Tail Component: Center-aligned on the bottom border line, fully visible without being obscured */}
+            {todaySchedules.length > 0 && (
+              <div className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-10 flex justify-center">
+                <button 
+                  type="button"
+                  onClick={() => handleOpenPlanner()}
+                  className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full font-black transition-all hover:scale-105 active:scale-95 cursor-pointer text-xs shadow-md border ${
+                    isDarkMode 
+                      ? 'bg-slate-800 text-indigo-300 border-indigo-500/30 hover:bg-slate-700 shadow-slate-950/60' 
+                      : 'bg-white text-indigo-600 border-indigo-200/90 hover:bg-indigo-50/70 shadow-indigo-100/90'
+                  }`}
+                  title="点击打开 AI 日程版"
+                >
+                  <span>共 {todaySchedules.length} 项 · 打开 AI 日程版</span>
+                  <ChevronRight size={13} className="stroke-[2.5]" />
+                </button>
+              </div>
+            )}
 
          </div>
 
@@ -239,6 +306,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
         initialItem={selectedItem || undefined}
         todayInfo={todayInfo}
         time={time}
+        selectedDate={time}
       />
     </>
   );
