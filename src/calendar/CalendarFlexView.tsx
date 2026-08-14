@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Calendar as CalendarIcon, CloudSun, Sparkles, Brain, Clock, ChevronDown, ChevronUp, Bot, CheckSquare, Square, Sun, Cloud, CloudRain, Wind, Gift } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Calendar as CalendarIcon, Sparkles } from 'lucide-react';
 import { ScheduleItem, TodoItem, MainCategory, SubCategory } from '../types';
-import { getTodayInfo } from './utils';
-import { isScheduleOnDate } from './useSchedule';
+import { getTodayInfo, getLocalDateString, getWeekNumber, getRelativeDaysLabel, isScheduleOnDate } from './utils';
 import { SchedulePlannerOverlay } from './SchedulePlannerOverlay';
+import { CalendarAetherTip } from './components/CalendarAetherTip';
 
 interface CalendarFlexViewProps {
   isDarkMode: boolean;
@@ -18,17 +18,11 @@ interface CalendarFlexViewProps {
   onShowPlanner?: (item?: ScheduleItem | TodoItem, date?: Date) => void;
 }
 
-const getLocalDateString = (d: Date) => {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-const getWeekNumber = (d: Date) => {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-};
-
+/**
+ * CalendarFlexView
+ * AI 月历视图 (View Layer)
+ * 包含拟物月历网格、节气与纪念日点标、选中日悬挂小尾巴及 AETHER 智能月度摘要
+ */
 export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({ 
   isDarkMode, 
   selectedDate,
@@ -41,9 +35,9 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
   onShowPlanner
 }) => {
   const [plannerOpen, setPlannerOpen] = useState(false);
-  const [activePlannerItem, setActivePlannerItem] = useState<{ id: string, type: 'schedule' | 'todo' } | undefined>(undefined);
+  const [activePlannerItem, setActivePlannerItem] = useState<{ id: string; type: 'schedule' | 'todo' } | undefined>(undefined);
 
-  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }, targetDate?: Date) => {
+  const openPlanner = (item?: { id: string; type: 'schedule' | 'todo' }, targetDate?: Date) => {
     let itemObj: ScheduleItem | TodoItem | undefined = undefined;
     if (item) {
       if (item.type === 'todo') itemObj = todos.find(t => t.id === item.id);
@@ -65,23 +59,28 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
 
   const monthName = `${selectedDate.getMonth() + 1}月`;
   const weekNumber = getWeekNumber(selectedDate);
-
   const selectedDayInfo = getTodayInfo(selectedDate);
 
-  const getRelativeDaysLabel = (target: Date, base: Date) => {
-    const t1 = new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
-    const t2 = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
-    const diffDays = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return '今天';
-    if (diffDays === 1) return '明天';
-    if (diffDays === -1) return '昨天';
-    if (diffDays > 0) return `${diffDays}天后`;
-    return `${Math.abs(diffDays)}天前`;
-  };
+  const monthSchedulesCount = schedules.filter(s => {
+    if (s.date) {
+      const sDate = new Date(s.date);
+      return sDate.getMonth() === selectedDate.getMonth();
+    }
+    return true; 
+  }).length;
+
+  const monthFestivals = monthDays
+    .map(d => getTodayInfo(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d)).festival)
+    .filter(Boolean);
+  const uniqueFestivals = Array.from(new Set(monthFestivals)).slice(0, 2);
+
+  const aetherMonthPrompt = `主人，本月是${monthName}，您有 ${monthSchedulesCount} 项日程安排。${
+    uniqueFestivals.length > 0 ? `包含 ${uniqueFestivals.join(' 和 ')} 等重要节日。` : ''
+  }记得合理规划时间哦！`;
 
   return (
     <div className="w-full h-full flex flex-col justify-between overflow-hidden relative">
-      {/* 1. Standard App Title Bar - Left aligned, fixed standard style */}
+      {/* 1. Standard App Title Bar */}
       <div className="mb-2 flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
@@ -261,39 +260,11 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
         </div>
       </div>
 
-      {/* 5. Bottom Aether Prompt - Standard App Style */}
-      <div className="mt-2.5 flex-shrink-0 pt-1">
-        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3.5 transition-all shadow-xl backdrop-blur-xl ${
-          isDarkMode ? 'bg-indigo-900/60 border-indigo-500/30 shadow-indigo-950/50' : 'bg-indigo-50/90 border-indigo-200 shadow-indigo-100/20'
-        }`}>
-          <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
-            <Bot size={16} className="text-indigo-500" />
-            <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
-            </span>
-          </div>
-          <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>AETHER 提示</p>
-            <p className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-              {(() => {
-                const monthSchedulesCount = schedules.filter(s => {
-                  if (s.date) {
-                    const sDate = new Date(s.date);
-                    return sDate.getMonth() === selectedDate.getMonth();
-                  }
-                  return true; 
-                }).length;
-
-                const monthFestivals = monthDays.map(d => getTodayInfo(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d)).festival).filter(Boolean);
-                const uniqueFestivals = Array.from(new Set(monthFestivals)).slice(0, 2);
-
-                return `主人，本月是${monthName}，您有 ${monthSchedulesCount} 项日程安排。${uniqueFestivals.length > 0 ? `包含 ${uniqueFestivals.join(' 和 ')} 等重要节日。` : ''}记得合理规划时间哦！`;
-              })()}
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* 5. Bottom Modular Aether Prompt */}
+      <CalendarAetherTip
+        isDarkMode={isDarkMode}
+        text={aetherMonthPrompt}
+      />
       
       <SchedulePlannerOverlay 
         isOpen={plannerOpen} 

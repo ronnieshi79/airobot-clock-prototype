@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Sparkles, Clock, CheckSquare, Square, X, CalendarIcon, CloudSun, CalendarDays, Bot, Target, Brain, ChevronRight, Bell, Gift, Heart } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Calendar, Sparkles, ChevronRight, Bell, Gift, Heart, CloudSun } from 'lucide-react';
 import { ScheduleItem, TodoItem, MainCategory, SubCategory, ScheduleType } from '../types';
-import { getTodayInfo } from './utils';
-import { isScheduleOnDate } from './useSchedule';
+import { getTodayInfo, isScheduleOnDate } from './utils';
 import { RecommendationStrip } from '../components/RecommendationStrip';
 import { SchedulePlannerOverlay } from './SchedulePlannerOverlay';
+import { CalendarTypeBadge } from './components/CalendarTypeBadge';
 
 interface CalendarHomeViewProps {
   isDarkMode: boolean;
@@ -18,6 +18,11 @@ interface CalendarHomeViewProps {
   onTriggerReminder?: (item: { type: 'schedule' | 'todo' | ScheduleType; item: ScheduleItem | TodoItem }) => void;
 }
 
+/**
+ * CalendarHomeView
+ * AI 日历主页视图 (View Layer)
+ * 包含拟物日期立牌、天气农历特别纪念标签、精选今日日程卡片与悬挂式日程板尾部
+ */
 export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   isDarkMode,
   todos = [],
@@ -29,14 +34,14 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   onTriggerReminder
 }) => {
   const [isPlanningOpen, setIsPlanningOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<{id: string, type: 'schedule' | 'todo' | ScheduleType} | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'schedule' | 'todo' | ScheduleType } | null>(null);
   
   const todayInfo = getTodayInfo(time);
   
-  // Find all schedules matching today (including yearly festivals, birthdays and anniversaries)
+  // 筛选属于今日的所有日程（含每年重复的节日、生日与纪念日）
   const todaySchedules = schedules.filter(s => isScheduleOnDate(s, time));
 
-  // Special commemorative items today
+  // 今日特定纪念事项
   const todayBirthdays = todaySchedules.filter(s => s.type === 'birthday');
   const todayAnniversaries = todaySchedules.filter(s => s.type === 'anniversary');
 
@@ -57,34 +62,10 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
     }
   };
 
-  const renderTypeIcon = (type?: ScheduleType) => {
-    switch (type) {
-      case 'festival':
-        return <Sparkles size={13} className="text-rose-500" />;
-      case 'birthday':
-        return <Gift size={13} className="text-rose-500" />;
-      case 'anniversary':
-        return <Heart size={13} className="text-amber-500" />;
-      case 'todo':
-        return <CheckSquare size={13} className="text-emerald-500" />;
-      case 'regular':
-      default:
-        return <Clock size={13} className="text-blue-500" />;
-    }
-  };
-
-  const getTypeBadgeLabel = (item: ScheduleItem) => {
-    if (item.type === 'festival') return '🏮 节日';
-    if (item.type === 'birthday') return '🎂 生日';
-    if (item.type === 'anniversary') return '🌟 纪念日';
-    if (item.type === 'todo') return '待办';
-    return item.time || '日程';
-  };
-
   return (
     <>
       <div className="w-full h-full flex flex-col gap-4 overflow-hidden relative">
-        {/* 1. Header with slogan */}
+        {/* 1. Header with Slogan */}
         <div className="mb-4 flex-shrink-0 pr-12 flex justify-between items-center">
           <div className="flex flex-col">
             <div className="flex items-center gap-3 mb-2">
@@ -101,10 +82,10 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
           </div>
         </div>
 
-        {/* 2. Main functional area (Left standalone card, Right content card) */}
+        {/* 2. Main Functional Area (Left Standalone Date Card, Right Info Area) */}
         <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col md:flex-row gap-5 pr-1 items-start pb-4">
           
-         {/* Left Date Card (Standalone) */}
+         {/* Left Date Card (Standalone Skeuomorphic Card) */}
          <div className={`w-full md:w-[130px] shrink-0 rounded-[2.5rem] flex flex-col items-center justify-center py-8 text-white bg-gradient-to-b from-[#ff8c00] to-[#e55d00] shadow-xl relative overflow-hidden`}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
             <span className="text-xs font-black tracking-[0.2em] mb-2 opacity-90">
@@ -121,15 +102,15 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
 
          {/* Right Info Area Card */}
          <div className={`flex-1 min-w-0 p-6 pb-6 rounded-[2.5rem] flex flex-col relative ${isDarkMode ? 'bg-slate-800/60 border border-white/5' : 'bg-slate-50 border border-slate-100'} shadow-sm`}>
-            {/* Weather & Date Tags row (Single row: Weather + Lunar + Special event name, no wrap) */}
+            {/* Weather & Date Tags Row (Single row: Weather + Lunar + Special event name, no wrap) */}
             <div className="flex items-center gap-2 mb-4 overflow-hidden flex-nowrap">
-               {/* Weather tag */}
+               {/* Weather Tag */}
                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold shadow-sm shrink-0 ${isDarkMode ? 'bg-gradient-to-br from-sky-500/20 to-sky-600/10 text-sky-400 border border-sky-500/20' : 'bg-gradient-to-br from-[#e0f2fe] to-[#bae6fd]/50 text-sky-700 border border-[#bae6fd]'}`}>
                  <CloudSun size={13} className="shrink-0" />
                  <span className="whitespace-nowrap">{todayInfo.weather.condition} {todayInfo.weather.temp}</span>
                </span>
                
-               {/* Lunar date */}
+               {/* Lunar Date */}
                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold shadow-sm shrink-0 ${isDarkMode ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-400 border border-amber-500/20' : 'bg-gradient-to-br from-amber-100 to-orange-50 text-amber-700 border border-amber-200'}`}>
                  <span className="whitespace-nowrap">{todayInfo.lunarDate}</span>
                </span>
@@ -176,7 +157,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                ) : null}
             </div>
 
-            {/* Today's Affairs / Schedules */}
+            {/* Today's Affairs Header */}
             <div className="flex items-center justify-between mb-3">
                <h4 className={`text-xs font-black tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>今日重要日程与待办</h4>
                <span className={`text-[11px] font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -184,6 +165,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                </span>
             </div>
             
+            {/* Top 3 Scheduled Items List */}
             <div className="flex flex-col gap-2.5">
               {todaySchedules.slice(0, 3).map((item, idx) => {
                 const itemType = item.type || 'regular';
@@ -200,8 +182,29 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                     }`}
                     title="点击打开 AI 日程卡片"
                   >
-                    <div className="flex items-center justify-center w-7 h-7 rounded-xl bg-black/5 dark:bg-white/10 shrink-0 ml-1">
-                      {renderTypeIcon(itemType)}
+                    {/* Left Type Icon (Clean, skeuomorphic, single icon) */}
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-xl shrink-0 ${
+                      itemType === 'birthday'
+                        ? 'bg-rose-500/15 text-rose-500'
+                        : itemType === 'anniversary'
+                        ? 'bg-amber-500/15 text-amber-500'
+                        : itemType === 'festival'
+                        ? 'bg-rose-500/15 text-rose-500'
+                        : itemType === 'todo'
+                        ? 'bg-emerald-500/15 text-emerald-500'
+                        : 'bg-blue-500/15 text-blue-500'
+                    }`}>
+                      {itemType === 'birthday' ? (
+                        <Gift size={16} />
+                      ) : itemType === 'anniversary' ? (
+                        <Heart size={16} />
+                      ) : itemType === 'festival' ? (
+                        <Sparkles size={16} />
+                      ) : itemType === 'todo' ? (
+                        <span className="text-xs font-black">待</span>
+                      ) : (
+                        <Calendar size={16} />
+                      )}
                     </div>
                     
                     <div className="flex-1 min-w-0 flex flex-col">
@@ -209,24 +212,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                         {item.task}
                       </span>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-md ${
-                          itemType === 'birthday' 
-                            ? 'bg-rose-500/15 text-rose-500' 
-                            : itemType === 'anniversary'
-                              ? 'bg-amber-500/15 text-amber-600'
-                              : itemType === 'festival'
-                                ? 'bg-rose-500/15 text-rose-500'
-                                : itemType === 'todo'
-                                  ? 'bg-emerald-500/15 text-emerald-600'
-                                  : 'bg-blue-500/15 text-blue-600'
-                        }`}>
-                          {getTypeBadgeLabel(item)}
-                        </span>
-                        {item.isAllDay ? (
-                          <span className="text-[9px] font-bold text-slate-400">全天</span>
-                        ) : item.time ? (
-                          <span className="text-[9px] font-bold text-slate-400 font-mono">{item.time}</span>
-                        ) : null}
+                        <CalendarTypeBadge type={itemType} isAllDay={item.isAllDay} time={item.time} size="sm" />
                       </div>
                     </div>
 
@@ -249,7 +235,7 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
               )}
             </div>
 
-            {/* Hanging Bottom Tail Component: Center-aligned on the bottom border line, fully visible without being obscured */}
+            {/* Hanging Bottom Tail Component: Center-aligned on the bottom border line */}
             {todaySchedules.length > 0 && (
               <div className="absolute -bottom-3.5 left-1/2 -translate-x-1/2 z-10 flex justify-center">
                 <button 

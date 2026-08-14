@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ListTodo, CheckSquare, Square, Clock, Plus, Calendar as CalendarIcon, Sparkles, Bot, ChevronUp, ChevronDown, Bell } from 'lucide-react';
+import { ListTodo, ChevronUp, ChevronDown } from 'lucide-react';
 import { TodoItem, ScheduleItem, MainCategory, SubCategory } from '../types';
 import { SchedulePlannerOverlay } from './SchedulePlannerOverlay';
-import { getTodayInfo } from './utils';
+import { getTodayInfo, getLocalDateString } from './utils';
+import { TodoListItem } from './components/TodoListItem';
+import { CalendarAetherTip } from './components/CalendarAetherTip';
 
 interface CalendarListViewProps {
   isDarkMode: boolean;
@@ -18,6 +20,11 @@ interface CalendarListViewProps {
   onTriggerReminder?: (item: { type: 'schedule' | 'todo'; item: ScheduleItem | TodoItem }) => void;
 }
 
+/**
+ * CalendarListView
+ * AI 待办视图 (View Layer)
+ * 包含多维度时态筛选、待办卡片列表、可折叠已完成清单与 AETHER 待办流态分析
+ */
 export const CalendarListView: React.FC<CalendarListViewProps> = ({ 
   isDarkMode, 
   todos = [], 
@@ -34,9 +41,9 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   const [completedCollapsed, setCompletedCollapsed] = useState(true);
   
   const [plannerOpen, setPlannerOpen] = useState(false);
-  const [activePlannerItem, setActivePlannerItem] = useState<{ id: string, type: 'schedule' | 'todo' } | undefined>(undefined);
+  const [activePlannerItem, setActivePlannerItem] = useState<{ id: string; type: 'schedule' | 'todo' } | undefined>(undefined);
 
-  const openPlanner = (item?: { id: string, type: 'schedule' | 'todo' }, targetDate?: Date) => {
+  const openPlanner = (item?: { id: string; type: 'schedule' | 'todo' }, targetDate?: Date) => {
     let itemObj: ScheduleItem | TodoItem | undefined = undefined;
     if (item) {
       if (item.type === 'todo') itemObj = todos.find(t => t.id === item.id);
@@ -51,9 +58,9 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
   };
   
   const dayInfo = getTodayInfo(time);
-  const todayStr = time.toISOString().split('T')[0];
+  const todayStr = getLocalDateString(time);
   const nextWeekTime = time.getTime() + 7 * 86400000;
-  const nextWeekStr = new Date(nextWeekTime).toISOString().split('T')[0];
+  const nextWeekStr = getLocalDateString(new Date(nextWeekTime));
 
   const filteredTodos = todos.filter(todo => {
     const todoDate = todo.date || '';
@@ -80,61 +87,27 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
     { id: 'week', label: '最近7天' },
   ] as const;
 
-  const renderTodoCard = (todo: TodoItem) => (
-    <motion.div
-      onClick={() => onTriggerReminder?.({ type: 'todo', item: todo })}
-      key={`todo-${todo.id}`}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
-        isDarkMode 
-          ? 'bg-slate-800/60 border-white/5 hover:bg-slate-800 shadow-lg shadow-slate-950/20' 
-          : 'bg-white border-slate-100 shadow-sm hover:bg-slate-50'
-      }`}
-    >
-      <button 
-        onClick={(e) => { e.stopPropagation(); onToggleTodo(todo.id); }}
-        className={`flex-shrink-0 mt-0.5 transition-colors ${
-          todo.status === 'closed' ? 'text-emerald-500' : (isDarkMode ? 'text-slate-500 hover:text-slate-400' : 'text-slate-300 hover:text-slate-400')
-        }`}
-      >
-        {todo.status === 'closed' ? <CheckSquare size={20} /> : <Square size={20} />}
-      </button>
-      
-      <div className="flex-1 min-w-0">
-        <h4 className={`text-sm font-black break-words ${todo.status === 'closed' && (isDarkMode ? 'text-slate-500 line-through' : 'text-slate-400 line-through')} ${todo.status === 'open' && (isDarkMode ? 'text-slate-200' : 'text-slate-800')}`}>
-          {todo.task}
-        </h4>
-        <div className={`flex items-center gap-2 mt-2 text-[10px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-          <span className={`px-2 py-0.5 rounded-md ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>待办</span>
-          {todo.date && (
-            <span className={`px-2 py-0.5 rounded-full ${todo.status === 'open' && todo.date < todayStr ? 'bg-red-500/10 text-red-500' : (isDarkMode ? 'bg-slate-700/50' : 'bg-slate-100')}`}>
-              {todo.date === todayStr ? '今天' : todo.date}
-            </span>
-          )}
-          {todo.time && (
-            <span className="flex items-center gap-1">
-              <Clock size={10} />
-              {todo.time}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div 
-        className={`flex-shrink-0 p-1.5 rounded-xl transition-all self-center ${
-          isDarkMode ? 'text-indigo-400 bg-indigo-500/10' : 'text-indigo-600 bg-indigo-50'
-        }`}
-        title="点击查看提醒卡"
-      >
-        <Bell size={14} />
-      </div>
-    </motion.div>
-  );
-
   const openTodos = filteredTodos.filter(t => t.status === 'open');
   const closedTodos = filteredTodos.filter(t => t.status === 'closed');
+
+  // Aether 提示文案计算
+  const computeAetherTip = () => {
+    const allOpen = todos.filter(t => t.status === 'open');
+    const overdues = allOpen.filter(t => t.date && t.date < todayStr);
+    const upcoming = allOpen.filter(t => t.date === todayStr);
+    
+    if (allOpen.length === 0) return '主人，太棒了！所有待办均已清空，尽情享受属于你的时间吧。';
+
+    let summary = `主人，目前您共有 ${allOpen.length} 项待办进行中。`;
+    if (overdues.length > 0) {
+      summary += `其中有 ${overdues.length} 项已逾期，建议优先处理哦！`;
+    } else if (upcoming.length > 0) {
+      summary += `其中 ${upcoming.length} 项将于今日到期，请把握进度。`;
+    } else {
+      summary += `所有任务均在计划内，待办流态非常健康，记得按时完成哦！`;
+    }
+    return summary;
+  };
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden relative">
@@ -182,7 +155,16 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
               {/* Active / Uncompleted Section */}
               {openTodos.length > 0 ? (
                 <div className="flex flex-col gap-3">
-                  {openTodos.map(todo => renderTodoCard(todo))}
+                  {openTodos.map(todo => (
+                    <TodoListItem
+                      key={`todo-${todo.id}`}
+                      todo={todo}
+                      isDarkMode={isDarkMode}
+                      todayStr={todayStr}
+                      onToggle={onToggleTodo}
+                      onTriggerReminder={onTriggerReminder}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -216,7 +198,16 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
                         transition={{ duration: 0.25 }}
                         className="flex flex-col gap-3 mt-2 overflow-hidden"
                       >
-                        {closedTodos.map(todo => renderTodoCard(todo))}
+                        {closedTodos.map(todo => (
+                          <TodoListItem
+                            key={`todo-closed-${todo.id}`}
+                            todo={todo}
+                            isDarkMode={isDarkMode}
+                            todayStr={todayStr}
+                            onToggle={onToggleTodo}
+                            onTriggerReminder={onTriggerReminder}
+                          />
+                        ))}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -226,7 +217,16 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
           ) : (
             <div key="filtered-list" className="flex flex-col gap-3">
               {filteredTodos.length > 0 ? (
-                filteredTodos.map(todo => renderTodoCard(todo))
+                filteredTodos.map(todo => (
+                  <TodoListItem
+                    key={`todo-filtered-${todo.id}`}
+                    todo={todo}
+                    isDarkMode={isDarkMode}
+                    todayStr={todayStr}
+                    onToggle={onToggleTodo}
+                    onTriggerReminder={onTriggerReminder}
+                  />
+                ))
               ) : (
                 <div className="text-center py-12">
                   <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -239,42 +239,11 @@ export const CalendarListView: React.FC<CalendarListViewProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* 4. Bottom Aether Prompt */}
-      <div className="mt-2.5 flex-shrink-0 pt-1">
-        <div className={`px-5 py-3.5 rounded-[2rem] border flex items-start gap-3.5 transition-all shadow-xl backdrop-blur-xl ${
-          isDarkMode ? 'bg-indigo-900/60 border-indigo-500/30 shadow-indigo-950/50' : 'bg-indigo-50/90 border-indigo-200 shadow-indigo-100/20'
-        }`}>
-          <div className="w-9 h-9 rounded-full bg-indigo-500/20 flex flex-shrink-0 items-center justify-center mt-0.5 relative">
-            <Bot size={16} className="text-indigo-500" />
-            <span className="absolute top-0 right-0 flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
-            </span>
-          </div>
-          <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>AETHER 提示</p>
-            <p className={`text-xs font-bold leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-              {(() => {
-                 const openTodos = todos.filter(t => t.status === 'open');
-                 const overdues = openTodos.filter(t => t.date && t.date < todayStr);
-                 const upcoming = openTodos.filter(t => t.date === todayStr);
-                 
-                 if (openTodos.length === 0) return '主人，太棒了！所有待办均已清空，尽情享受属于你的时间吧。';
- 
-                 let summary = `主人，目前您共有 ${openTodos.length} 项待办进行中。`;
-                 if (overdues.length > 0) {
-                   summary += `其中有 ${overdues.length} 项已逾期，建议优先处理哦！`;
-                 } else if (upcoming.length > 0) {
-                   summary += `其中 ${upcoming.length} 项将于今日到期，请把握进度。`;
-                 } else {
-                   summary += `所有任务均在计划内，待办流态非常健康，记得按时完成哦！`;
-                 }
-                 return summary;
-              })()}
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* 4. Bottom Modular Aether Prompt */}
+      <CalendarAetherTip
+        isDarkMode={isDarkMode}
+        text={computeAetherTip()}
+      />
       
       <SchedulePlannerOverlay 
         isOpen={plannerOpen} 

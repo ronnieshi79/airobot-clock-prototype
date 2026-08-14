@@ -1,41 +1,14 @@
 import { useState, useMemo } from 'react';
 import { ScheduleItem, TodoItem, ScheduleType } from '../types';
+import { getLocalDateString, isScheduleOnDate } from './utils';
 
-export const getLocalDateString = (d: Date) => {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+export { getLocalDateString, isScheduleOnDate };
 
-export const isScheduleOnDate = (schedule: ScheduleItem, targetDate: Date) => {
-  const targetStr = getLocalDateString(targetDate);
-  const targetMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
-  const targetDay = String(targetDate.getDate()).padStart(2, '0');
-  const targetMonthDay = `${targetMonth}-${targetDay}`;
-
-  // For annual festivals, birthdays and anniversaries
-  if (schedule.repeat === 'yearly' || schedule.type === 'festival' || schedule.type === 'birthday' || schedule.type === 'anniversary') {
-    if (schedule.date) {
-      const parts = schedule.date.split('-');
-      if (parts.length === 3) {
-        return `${parts[1]}-${parts[2]}` === targetMonthDay;
-      } else if (parts.length === 2) {
-        return schedule.date === targetMonthDay;
-      }
-    }
-  }
-
-  // Exact date match
-  if (schedule.date) {
-    return schedule.date === targetStr;
-  }
-
-  // Day of week match
-  if (schedule.dayOfWeek !== undefined) {
-    return schedule.dayOfWeek === targetDate.getDay();
-  }
-
-  return false;
-};
-
+/**
+ * useSchedule
+ * AI 日历与待办核心 ViewModel 状态管理 Hook
+ * 负责日程、待办数据的响应式管理、每日限额(10条)校验、分类过滤与状态同步
+ */
 export const useSchedule = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedScheduleDay, setSelectedScheduleDay] = useState(new Date().getDay());
@@ -158,7 +131,7 @@ export const useSchedule = () => {
       leadTime: '15min',
       createdAt: Date.now() - 300000,
     },
-    // 4. 待办 (作为日程的一种特殊类型)
+    // 5. 待办 (作为日程的一种特殊类型)
     {
       id: 'todo-1',
       task: '回复客户邮件',
@@ -196,7 +169,7 @@ export const useSchedule = () => {
     },
   ]);
 
-  // Derived todos array for seamless backward compatibility
+  // 派生待办列表，确保与 TodoItem 结构向下兼容
   const todos = useMemo<TodoItem[]>(() => {
     return schedules
       .filter(s => s.type === 'todo')
@@ -248,7 +221,6 @@ export const useSchedule = () => {
   ) => {
     if (!checkDailyLimit(date, dayOfWeek)) return false;
     
-    // Festivals and Birthdays default to all-day & yearly repeat
     const actualIsAllDay = (type === 'festival' || type === 'birthday') ? true : isAllDay;
     const actualRepeat = (type === 'festival' || type === 'birthday') ? 'yearly' : repeat;
 

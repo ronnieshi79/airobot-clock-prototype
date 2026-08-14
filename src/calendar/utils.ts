@@ -1,3 +1,5 @@
+import { ScheduleItem } from '../types';
+
 export const FESTIVALS: Record<string, string> = {
   '1-1': '元旦',
   '2-14': '情人节',
@@ -47,6 +49,79 @@ export const WEATHER_MOCKS = [
   { temp: '15°C', condition: '微风', icon: '🍃', advice: '春风拂面，非常舒适。建议穿轻薄透气的春装，适合开窗通风或进行户外踏青。' },
 ];
 
+/**
+ * 格式化本地日期为 YYYY-MM-DD
+ */
+export const getLocalDateString = (d: Date): string => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/**
+ * 获取指定日期的 ISO 周数
+ */
+export const getWeekNumber = (d: Date): number => {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+};
+
+/**
+ * 获取相对日期的自然语言标签 (今天、明天、昨天、N天后/前)
+ */
+export const getRelativeDaysLabel = (target: Date, base: Date): string => {
+  const t1 = new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
+  const t2 = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
+  const diffDays = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return '今天';
+  if (diffDays === 1) return '明天';
+  if (diffDays === -1) return '昨天';
+  if (diffDays > 0) return `${diffDays}天后`;
+  return `${Math.abs(diffDays)}天前`;
+};
+
+/**
+ * 判断日程项在指定日期是否生效（兼容单日、每年重复、节日、生日、纪念日、星期循环）
+ */
+export const isScheduleOnDate = (schedule: ScheduleItem, targetDate: Date): boolean => {
+  const targetStr = getLocalDateString(targetDate);
+  const targetMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const targetDay = String(targetDate.getDate()).padStart(2, '0');
+  const targetMonthDay = `${targetMonth}-${targetDay}`;
+
+  // 每年重复或特殊节日/生日/纪念日
+  if (
+    schedule.repeat === 'yearly' ||
+    schedule.type === 'festival' ||
+    schedule.type === 'birthday' ||
+    schedule.type === 'anniversary'
+  ) {
+    if (schedule.date) {
+      const parts = schedule.date.split('-');
+      if (parts.length === 3) {
+        return `${parts[1]}-${parts[2]}` === targetMonthDay;
+      } else if (parts.length === 2) {
+        return schedule.date === targetMonthDay;
+      }
+    }
+  }
+
+  // 精确单日匹配
+  if (schedule.date) {
+    return schedule.date === targetStr;
+  }
+
+  // 星期循环匹配
+  if (schedule.dayOfWeek !== undefined) {
+    return schedule.dayOfWeek === targetDate.getDay();
+  }
+
+  return false;
+};
+
+/**
+ * 获取指定日期的综合农历、节气、节日、宜忌及天气状况信息
+ */
 export const getTodayInfo = (date: Date) => {
   const month = date.getMonth() + 1;
   const day = date.getDate();
@@ -56,7 +131,7 @@ export const getTodayInfo = (date: Date) => {
   const solarTerm = SOLAR_TERMS[key];
   const weather = WEATHER_MOCKS[day % WEATHER_MOCKS.length];
   
-  // Simple stable mock for lunar date based on the Gregorian date
+  // 稳定模拟农历推算
   const LUNAR_MOCKS = ["初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十", "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"];
   const LUNAR_MONTHS = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"];
   const hash = day + month * 31;
