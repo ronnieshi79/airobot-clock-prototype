@@ -94,6 +94,7 @@ export default function App() {
     selectedScheduleDay,
     setSelectedScheduleDay,
     schedules,
+    setSchedules,
     isAddingSchedule,
     setIsAddingSchedule,
     newTask,
@@ -104,6 +105,7 @@ export default function App() {
     toggleSchedule,
     deleteSchedule,
     todos,
+    setTodos,
     toggleTodo,
     addTodo
   } = useSchedule();
@@ -1230,6 +1232,13 @@ export default function App() {
                   toggleTodo(id);
                 } else {
                   toggleSchedule(id);
+                }
+              }}
+              onUpdateItem={(id, type, updates) => {
+                if (type === 'todo') {
+                  setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+                } else {
+                  setSchedules(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
                 }
               }}
             />

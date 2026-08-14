@@ -8,23 +8,39 @@ export interface Message {
   isStreaming?: boolean;
 }
 
+export type ScheduleType = 'festival' | 'birthday' | 'regular' | 'todo';
+
 export interface ScheduleItem {
   id: string;
-  time: string;
+  time?: string;
+  endTime?: string;
   task: string;
-  completed: boolean;
-  dayOfWeek: number; // 0-6
-  date?: string; // Optional absolute date (YYYY-MM-DD)
+  type?: ScheduleType;
+  isAllDay?: boolean;
+  repeat?: 'yearly' | 'daily' | 'weekly' | 'monthly' | 'none';
+  completed?: boolean;
+  status?: 'open' | 'closed';
+  dayOfWeek?: number; // 0-6
+  date?: string; // Optional absolute date (YYYY-MM-DD or MM-DD)
+  reminderEnabled?: boolean;
+  leadTime?: string;
   category?: string;
   title?: string; // For backward compatibility with constants.ts
+  createdAt?: number;
 }
 
 export interface TodoItem {
   id: string;
   task: string;
   status: 'open' | 'closed';
+  type?: ScheduleType;
   date?: string; // YYYY-MM-DD
   time?: string; // HH:mm
+  endTime?: string; // HH:mm
+  isAllDay?: boolean;
+  repeat?: 'yearly' | 'daily' | 'weekly' | 'monthly' | 'none';
+  reminderEnabled?: boolean;
+  leadTime?: string;
   createdAt: number;
 }
 

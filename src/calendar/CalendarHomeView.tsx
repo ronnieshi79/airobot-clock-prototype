@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar, Sparkles, Clock, CheckSquare, Square, X, CalendarIcon, CloudSun, CalendarDays, Bot, Target, Brain, ChevronRight, Bell } from 'lucide-react';
-import { ScheduleItem, TodoItem, MainCategory, SubCategory } from '../types';
+import { Calendar, Sparkles, Clock, CheckSquare, Square, X, CalendarIcon, CloudSun, CalendarDays, Bot, Target, Brain, ChevronRight, Bell, Gift } from 'lucide-react';
+import { ScheduleItem, TodoItem, MainCategory, SubCategory, ScheduleType } from '../types';
 import { getTodayInfo } from './utils';
+import { isScheduleOnDate } from './useSchedule';
 import { RecommendationStrip } from '../components/RecommendationStrip';
 import { SchedulePlannerOverlay } from './SchedulePlannerOverlay';
 
@@ -14,13 +15,13 @@ interface CalendarHomeViewProps {
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
   onShowLogbook: () => void;
   onShowPlanner?: (item?: ScheduleItem | TodoItem, date?: Date) => void;
-  onTriggerReminder?: (item: { type: 'schedule' | 'todo'; item: ScheduleItem | TodoItem }) => void;
+  onTriggerReminder?: (item: { type: 'schedule' | 'todo' | ScheduleType; item: ScheduleItem | TodoItem }) => void;
 }
 
 export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   isDarkMode,
   todos = [],
-  schedules,
+  schedules = [],
   time,
   onNavigate,
   onShowLogbook,
@@ -28,25 +29,17 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
   onTriggerReminder
 }) => {
   const [isPlanningOpen, setIsPlanningOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<{id: string, type: 'schedule' | 'todo'} | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{id: string, type: 'schedule' | 'todo' | ScheduleType} | null>(null);
   
   const todayInfo = getTodayInfo(time);
-  const localTodayStr = `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')}`;
   
-  const todaySchedules = schedules.filter(s => s.date ? s.date === localTodayStr : s.dayOfWeek === time.getDay());
-  const todayTodos = todos.filter(t => t.date === localTodayStr);
-  const openTodos = todayTodos.filter(t => t.status === 'open');
+  // Find all schedules matching today (including yearly festivals and birthdays)
+  const todaySchedules = schedules.filter(s => isScheduleOnDate(s, time));
 
-  const filteredItems = [
-    ...todayTodos.map(t => ({ type: 'todo' as const, data: t })),
-    ...todaySchedules.map(s => ({ type: 'schedule' as const, data: s }))
-  ];
-
-  const handleOpenPlanner = (id?: string, type?: 'schedule' | 'todo') => {
+  const handleOpenPlanner = (id?: string, type?: 'schedule' | 'todo' | ScheduleType) => {
     let itemObj: ScheduleItem | TodoItem | undefined = undefined;
-    if (id && type) {
-      if (type === 'todo') itemObj = todos.find(t => t.id === id);
-      else itemObj = schedules.find(s => s.id === id);
+    if (id) {
+      itemObj = schedules.find(s => s.id === id) || todos.find(t => t.id === id);
     }
     if (onShowPlanner) {
       onShowPlanner(itemObj, time);
@@ -58,6 +51,27 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
       }
       setIsPlanningOpen(true);
     }
+  };
+
+  const renderTypeIcon = (type?: ScheduleType) => {
+    switch (type) {
+      case 'festival':
+        return <Sparkles size={13} className="text-rose-500" />;
+      case 'birthday':
+        return <Gift size={13} className="text-pink-500" />;
+      case 'todo':
+        return <CheckSquare size={13} className="text-emerald-500" />;
+      case 'regular':
+      default:
+        return <Clock size={13} className="text-amber-500" />;
+    }
+  };
+
+  const getTypeBadgeLabel = (item: ScheduleItem) => {
+    if (item.type === 'festival') return '节日';
+    if (item.type === 'birthday') return '生日';
+    if (item.type === 'todo') return '待办';
+    return item.time || '日程';
   };
 
   return (
@@ -117,26 +131,48 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
 
             {/* Today's Affairs / Schedules */}
             <div className="flex items-center justify-between mb-4">
-               <h4 className={`text-xs font-black tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>今日重要日程</h4>
+               <h4 className={`text-xs font-black tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>今日重要日程与待办</h4>
             </div>
             
             <div className="flex flex-col gap-3.5 h-[240px]">
-              {filteredItems.slice(0, 3).map((item, idx) => {
+              {todaySchedules.slice(0, 3).map((item, idx) => {
+                const itemType = item.type || 'regular';
+                const isItemClosed = item.status === 'closed' || item.completed;
                 return (
                   <motion.div
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    key={`h-item-${idx}`}
-                    onClick={() => onTriggerReminder?.({ type: item.type, item: item.data })}
-                    className={`flex items-center gap-4 p-5 rounded-[1.5rem] shrink-0 cursor-pointer transition-all ${
+                    key={`h-item-${item.id}`}
+                    onClick={() => onTriggerReminder?.({ type: itemType, item })}
+                    className={`flex items-center gap-4 p-4 rounded-[1.5rem] shrink-0 cursor-pointer transition-all ${
                       isDarkMode ? 'bg-slate-700/50 hover:bg-slate-600 border border-transparent' : 'bg-white shadow-md shadow-slate-200/50 border border-slate-100 hover:border-slate-300'
                     }`}
                   >
-                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-[#ff8c00] to-[#e55d00] shrink-0 ml-1 shadow-sm"></div>
-                    <span className={`text-sm font-bold truncate flex-1 ${item.type === 'todo' && item.data.status === 'closed' ? 'line-through opacity-50' : ''} ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                      {item.data.task}
-                    </span>
+                    <div className="flex items-center justify-center w-7 h-7 rounded-xl bg-black/5 dark:bg-white/10 shrink-0 ml-1">
+                      {renderTypeIcon(itemType)}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <span className={`text-sm font-bold truncate ${isItemClosed ? 'line-through opacity-50' : ''} ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+                        {item.task}
+                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-md ${
+                          itemType === 'festival' || itemType === 'birthday' 
+                            ? 'bg-rose-500/15 text-rose-500' 
+                            : itemType === 'todo'
+                              ? 'bg-emerald-500/15 text-emerald-600'
+                              : 'bg-amber-500/15 text-amber-600'
+                        }`}>
+                          {getTypeBadgeLabel(item)}
+                        </span>
+                        {item.isAllDay && (
+                          <span className="text-[9px] font-bold text-slate-400">全天</span>
+                        )}
+                      </div>
+                    </div>
+
                     <div
                       className={`p-1.5 rounded-xl transition-all flex items-center justify-center shrink-0 ${
                         isDarkMode 
@@ -150,21 +186,20 @@ export const CalendarHomeView: React.FC<CalendarHomeViewProps> = ({
                   </motion.div>
                 );
               })}
-              {filteredItems.length === 0 && (
+              {todaySchedules.length === 0 && (
                 <div className={`p-4 rounded-2xl border border-dashed ${isDarkMode ? 'border-white/10' : 'border-slate-200'} text-center`}>
                   <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>今日无特定日程事务</span>
                 </div>
               )}
-              {filteredItems.length > 3 && (
+              {todaySchedules.length > 3 && (
                  <button 
                    onClick={() => handleOpenPlanner()}
                    className={`mt-1 flex items-center justify-center font-bold py-2 rounded-[1.2rem] hover:opacity-80 transition-opacity cursor-pointer text-xs ${isDarkMode ? 'bg-slate-700/30 text-slate-400 hover:text-slate-300' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
                  >
-                   查看其余 {filteredItems.length - 3} 项日程安排 <ChevronRight size={14} className="ml-1" />
+                   查看其余 {todaySchedules.length - 3} 项日程安排 <ChevronRight size={14} className="ml-1" />
                  </button>
               )}
             </div>
-
 
          </div>
 

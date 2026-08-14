@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Calendar as CalendarIcon, CloudSun, Sparkles, Brain, Clock, ChevronDown, ChevronUp, Bot, CheckSquare, Square, Sun, Cloud, CloudRain, Wind } from 'lucide-react';
+import { Calendar as CalendarIcon, CloudSun, Sparkles, Brain, Clock, ChevronDown, ChevronUp, Bot, CheckSquare, Square, Sun, Cloud, CloudRain, Wind, Gift } from 'lucide-react';
 import { ScheduleItem, TodoItem, MainCategory, SubCategory } from '../types';
 import { getTodayInfo } from './utils';
+import { isScheduleOnDate } from './useSchedule';
 import { SchedulePlannerOverlay } from './SchedulePlannerOverlay';
 
 interface CalendarFlexViewProps {
@@ -14,7 +15,7 @@ interface CalendarFlexViewProps {
   time: Date;
   onNavigate: (cat: MainCategory, sub: SubCategory) => void;
   onToggleTodo?: (id: string) => void;
-  onShowPlanner?: (item?: ScheduleItem | TodoItem) => void;
+  onShowPlanner?: (item?: ScheduleItem | TodoItem, date?: Date) => void;
 }
 
 const getLocalDateString = (d: Date) => {
@@ -33,7 +34,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
   selectedDate,
   setSelectedDate,
   todos = [],
-  schedules, 
+  schedules = [], 
   time,
   onNavigate,
   onToggleTodo,
@@ -104,7 +105,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Dynamic Grid Container - Standard Grid with overflow-hidden to eliminate scrollbars */}
+      {/* 3. Dynamic Grid Container */}
       <div className="flex-1 flex flex-col justify-start min-h-0 overflow-hidden px-0.5">
         {/* Weekday Labels */}
         <div className="grid grid-cols-7 gap-1 text-center mb-1.5 flex-shrink-0">
@@ -120,10 +121,17 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
             const date = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), d);
             const isTodayLocal = getLocalDateString(date) === getLocalDateString(time);
             const isSelected = getLocalDateString(date) === getLocalDateString(selectedDate);
-            const hasItems = schedules.some(s => (s.date === getLocalDateString(date)) || (!s.date && s.dayOfWeek === date.getDay()));
+            
+            const hasItems = schedules.some(s => isScheduleOnDate(s, date));
+            const dayFestivalsOrBirthdays = schedules.filter(s => (s.type === 'festival' || s.type === 'birthday') && isScheduleOnDate(s, date));
             
             const cellInfo = getTodayInfo(date);
-            const displayLunar = cellInfo.festival || cellInfo.solarTerm || cellInfo.lunarDate.replace(/农历.*月/, '');
+            const displayLunar = dayFestivalsOrBirthdays.length > 0
+              ? dayFestivalsOrBirthdays[0].task
+              : (cellInfo.festival || cellInfo.solarTerm || cellInfo.lunarDate.replace(/农历.*月/, ''));
+
+            const hasFestival = !!cellInfo.festival || dayFestivalsOrBirthdays.some(s => s.type === 'festival');
+            const hasBirthday = dayFestivalsOrBirthdays.some(s => s.type === 'birthday');
 
             return (
               <motion.button
@@ -159,21 +167,25 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                   )}
                 </div>
 
-                {/* Lunar / Festival text */}
+                {/* Lunar / Festival / Birthday text */}
                 <div className={`text-[10px] font-bold leading-tight my-0.5 text-center truncate max-w-full px-0.5 ${
-                  cellInfo.festival 
-                    ? 'text-rose-500' 
-                    : cellInfo.solarTerm
-                      ? 'text-emerald-500'
-                      : (isDarkMode ? 'text-slate-400' : 'text-slate-400')
+                  hasBirthday
+                    ? 'text-pink-500'
+                    : hasFestival
+                      ? 'text-rose-500' 
+                      : cellInfo.solarTerm
+                        ? 'text-emerald-500'
+                        : (isDarkMode ? 'text-slate-400' : 'text-slate-400')
                 }`}>
                   {displayLunar}
                 </div>
 
-                {/* Schedule Blue Dot - Positioned cleanly with dedicated space to prevent overlapping */}
+                {/* Schedule Indicator Dot */}
                 <div className="h-2 flex items-center justify-center flex-shrink-0">
                   {hasItems ? (
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-xs" />
+                    <div className={`w-1.5 h-1.5 rounded-full shadow-xs ${
+                      hasBirthday ? 'bg-pink-500' : hasFestival ? 'bg-rose-500' : 'bg-indigo-500'
+                    }`} />
                   ) : (
                     <div className="w-1.5 h-1.5" />
                   )}
@@ -223,13 +235,13 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
               <span className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-wider">今日事务:</span>
               <span className={`truncate ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'} font-black`}>
                 {(() => {
-                  const selectedDateStr = getLocalDateString(selectedDate);
-                  const daySchedules = schedules.filter(s => s.date === selectedDateStr || (!s.date && s.dayOfWeek === selectedDate.getDay()));
-                  const dayTodos = todos.filter(t => t.date === selectedDateStr);
-                  const items = [
-                    ...daySchedules.map(s => `${s.time ? s.time + ' ' : ''}${s.task || s.title || ''}`),
-                    ...dayTodos.map(t => `${t.time ? t.time + ' ' : ''}${t.task}`)
-                  ];
+                  const daySchedules = schedules.filter(s => isScheduleOnDate(s, selectedDate));
+                  const items = daySchedules.map(s => {
+                    if (s.type === 'festival' || s.type === 'birthday' || s.isAllDay) {
+                      return `[全天] ${s.task}`;
+                    }
+                    return `${s.time ? s.time + ' ' : ''}${s.task || s.title || ''}`;
+                  });
                   if (items.length === 0) return '暂无日程，点击规划';
                   return items.join('；');
                 })()}
@@ -259,7 +271,7 @@ export const CalendarFlexView: React.FC<CalendarFlexViewProps> = ({
                 const monthSchedulesCount = schedules.filter(s => {
                   if (s.date) {
                     const sDate = new Date(s.date);
-                    return sDate.getFullYear() === selectedDate.getFullYear() && sDate.getMonth() === selectedDate.getMonth();
+                    return sDate.getMonth() === selectedDate.getMonth();
                   }
                   return true; 
                 }).length;

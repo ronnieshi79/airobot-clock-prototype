@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Clock, CheckSquare, Power, GripVertical, ChevronRight, ChevronLeft, Sparkles, CloudSun, CalendarIcon, X, Plus, Minimize2, Trash2, Bot } from 'lucide-react';
-import { ScheduleItem, TodoItem, WeatherInfo } from '../types';
+import { Mic, Clock, CheckSquare, Power, GripVertical, ChevronRight, ChevronLeft, Sparkles, CloudSun, CalendarIcon, X, Plus, Minimize2, Trash2, Bot, Gift, CalendarDays } from 'lucide-react';
+import { ScheduleItem, TodoItem, ScheduleType, WeatherInfo } from '../types';
 import { getTodayInfo } from './utils';
 
 interface SchedulePlannerOverlayProps {
@@ -10,7 +10,7 @@ interface SchedulePlannerOverlayProps {
   isDarkMode: boolean;
   schedules?: ScheduleItem[];
   todos?: TodoItem[];
-  initialItem?: { id: string, type: 'schedule' | 'todo' };
+  initialItem?: { id: string, type: 'schedule' | 'todo' | ScheduleType };
   selectedDate?: Date;
   todayInfo?: { 
     festival: string | undefined; 
@@ -36,7 +36,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
   const [dateOffset, setDateOffset] = useState(0);
   const [knobRotation, setKnobRotation] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState<'schedule' | 'todo' | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   
   // Local state for items to support dragging and visualization
@@ -68,6 +68,8 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
 
   // Dynamic day info for activeDate
   const currentDayInfo = getTodayInfo(activeDate);
+  const activeDateStr = `${activeDate.getFullYear()}-${String(activeDate.getMonth() + 1).padStart(2, '0')}-${String(activeDate.getDate()).padStart(2, '0')}`;
+  const activeMonthDayStr = `${String(activeDate.getMonth() + 1).padStart(2, '0')}-${String(activeDate.getDate()).padStart(2, '0')}`;
 
   const getRelativeDateLabel = (offset: number) => {
     if (offset === 0) return '今日';
@@ -102,7 +104,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
   const handleAddNewItem = () => {
     const newItem = {
       id: `new-${Date.now()}`,
-      type: 'schedule',
+      type: 'regular' as ScheduleType,
       hour: 12,
       min: 0,
       time: '12:00',
@@ -113,44 +115,75 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
     };
     setLocalItems(prev => [...prev, newItem].sort((a, b) => (a.hour * 60 + a.min) - (b.hour * 60 + b.min)));
     setSelectedId(newItem.id);
-    setSelectedType('schedule');
+    setSelectedType('regular');
   };
 
-  // Sync initial items and selections
+  // Find all-day events (Festivals & Birthdays) for active date
+  const allDayEvents = schedules.filter(s => {
+    if (s.isAllDay || s.type === 'festival' || s.type === 'birthday') {
+      if (s.repeat === 'yearly' || s.type === 'festival' || s.type === 'birthday') {
+        if (s.date) {
+          const parts = s.date.split('-');
+          const md = parts.length === 3 ? `${parts[1]}-${parts[2]}` : s.date;
+          return md === activeMonthDayStr;
+        }
+      }
+      return s.date === activeDateStr;
+    }
+    return false;
+  });
+
+  // Sync initial items and selections for the timeline
   useEffect(() => {
-    const combined = [
-      ...schedules.map(s => ({ 
-        ...s, 
-        type: 'schedule' as const, 
-        hour: parseInt(s.time?.split(':')[0] || '10'), 
-        min: parseInt(s.time?.split(':')[1] || '0'),
-        duration: 90, // Default duration in minutes for visualization
-        displayTask: s.task || s.title || '无标题日程'
-      })),
-      ...todos.filter(t => t.time).map(t => ({ 
-        ...t, 
-        type: 'todo' as const, 
-        hour: parseInt(t.time?.split(':')[0] || '12'), 
-        min: parseInt(t.time?.split(':')[1] || '0'),
-        duration: 45, // Default duration for todos
-        displayTask: t.task || '无标题待办'
-      }))
-    ].sort((a, b) => (a.hour * 60 + a.min) - (b.hour * 60 + b.min))
-     .slice(0, 5); // Limit to 5 items as requested
+    const timedSchedules = schedules.filter(s => !s.isAllDay && s.type !== 'festival' && s.type !== 'birthday');
+    
+    const seenIds = new Set<string>();
+    const uniqueRawItems: any[] = [];
+
+    timedSchedules.forEach(s => {
+      if (!seenIds.has(s.id)) {
+        seenIds.add(s.id);
+        uniqueRawItems.push({
+          ...s,
+          type: (s.type || 'regular') as ScheduleType,
+          hour: parseInt(s.time?.split(':')[0] || '10'),
+          min: parseInt(s.time?.split(':')[1] || '0'),
+          duration: 90,
+          displayTask: s.task || s.title || '无标题日程'
+        });
+      }
+    });
+
+    todos.filter(t => t.time).forEach(t => {
+      if (!seenIds.has(t.id)) {
+        seenIds.add(t.id);
+        uniqueRawItems.push({
+          ...t,
+          type: 'todo' as ScheduleType,
+          hour: parseInt(t.time?.split(':')[0] || '12'),
+          min: parseInt(t.time?.split(':')[1] || '0'),
+          duration: 45,
+          displayTask: t.task || '无标题待办'
+        });
+      }
+    });
+
+    const combined = uniqueRawItems
+      .sort((a, b) => (a.hour * 60 + a.min) - (b.hour * 60 + b.min))
+      .slice(0, 5); // Limit to 5 items
 
     const fixedHours = [8, 11, 14, 17, 21];
 
-    // Unified on the right side and spread across evenly
     const aligned = combined.map((item, idx) => {
       const targetHour = fixedHours[idx % fixedHours.length];
-      const timeStr = `${String(targetHour).padStart(2, '0')}:00`;
+      const timeStr = item.time || `${String(targetHour).padStart(2, '0')}:00`;
       return {
         ...item,
         side: 'right',
-        hour: targetHour,
-        min: 0,
+        hour: item.hour || targetHour,
+        min: item.min || 0,
         time: timeStr,
-        duration: 90
+        duration: item.duration || 90
       };
     });
 
@@ -169,7 +202,6 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
   const endHour = 23;
   const totalHours = endHour - startHour;
   
-  // Helper to convert absolute minutes to percent
   const getTopPercentFromMinutes = (minutes: number) => {
     const minMinutes = startHour * 60;
     const maxMinutes = endHour * 60;
@@ -182,29 +214,21 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
     return (durationMinutes / maxMinutes) * 100;
   };
 
-  // Convert percentage back to time string
-  const getTimeFromPercent = (percent: number) => {
-    const maxMinutes = totalHours * 60;
-    const totalMinutes = (percent / 100) * maxMinutes;
-    const absoluteMinutes = (startHour * 60) + totalMinutes;
-    
-    // Snap to 15-minute intervals
-    const snappedMinutes = Math.round(absoluteMinutes / 15) * 15;
-    
-    const h = Math.floor(snappedMinutes / 60);
-    const m = snappedMinutes % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  };
-
-  const handleKnobAction = () => {
-    setKnobRotation(r => r + 90);
-    setTimeout(() => {
-      onClose();
-      setTimeout(() => setKnobRotation(0), 400);
-    }, 400);
-  };
-
   const hours = [7, 9, 11, 13, 15, 17, 19, 21, 23];
+
+  const renderTypeIcon = (type: string) => {
+    switch (type) {
+      case 'festival':
+        return <Sparkles size={13} className="text-rose-400" />;
+      case 'birthday':
+        return <Gift size={13} className="text-pink-400" />;
+      case 'todo':
+        return <CheckSquare size={13} className="text-emerald-400" />;
+      case 'regular':
+      default:
+        return <Clock size={13} className="text-amber-400" />;
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -274,7 +298,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                 <div className="absolute inset-0 pointer-events-none opacity-[0.15] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay"></div>
                 
                 {/* Header: Title Block Independent */}
-                <div className="shrink-0 pt-8 px-8 relative z-20">
+                <div className="shrink-0 pt-7 px-8 relative z-20">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center p-2 shadow-sm border ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-400/20' : 'bg-white/10 text-white border-white/20'}`}>
                       <CalendarIcon size={24} />
@@ -289,7 +313,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                 </div>
 
                 {/* Meta Container */}
-                <div className="shrink-0 px-8 pt-4 relative z-10">
+                <div className="shrink-0 px-8 pt-3 relative z-10">
                   <div className="flex items-center justify-between p-3 rounded-2xl border shadow-sm bg-black/20 border-white/10 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col text-white">
@@ -345,8 +369,39 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                   </div>
                 </div>
 
+                {/* All-Day Special Festivities / Birthdays Banner Row (节日/生日默认全天，可重复) */}
+                {(allDayEvents.length > 0 || currentDayInfo.festival) && (
+                  <div className="shrink-0 px-8 pt-2 relative z-10">
+                    <div className="flex items-center gap-2 overflow-x-auto py-1 custom-scrollbar">
+                      {currentDayInfo.festival && (
+                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-red-500/30 to-rose-600/30 border border-rose-400/40 text-rose-300 text-[11px] font-black shadow-sm shrink-0">
+                          <Sparkles size={12} className="text-rose-400 animate-pulse" />
+                          <span>今日节日：{currentDayInfo.festival}</span>
+                          <span className="text-[9px] font-bold opacity-75 bg-rose-500/20 px-1 py-0.5 rounded">全天</span>
+                        </div>
+                      )}
+                      {allDayEvents.map((evt) => (
+                        <div 
+                          key={evt.id} 
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-[11px] font-black shadow-sm shrink-0 ${
+                            evt.type === 'birthday' 
+                              ? 'bg-pink-500/25 border-pink-400/40 text-pink-300' 
+                              : 'bg-rose-500/25 border-rose-400/40 text-rose-300'
+                          }`}
+                        >
+                          {evt.type === 'birthday' ? <Gift size={12} className="text-pink-400" /> : <Sparkles size={12} className="text-rose-400" />}
+                          <span>{evt.task}</span>
+                          <span className="text-[9px] font-bold opacity-75 bg-white/10 px-1 py-0.5 rounded">
+                            {evt.repeat === 'yearly' ? '每年全天' : '全天'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Timeline Center */}
-                <div className="flex-1 relative flex flex-col px-6 mt-2 overflow-hidden pb-16">
+                <div className="flex-1 relative flex flex-col px-6 mt-1 overflow-hidden pb-16">
                   <div className="flex-1 relative" ref={scrollRef}>
                     {/* Left Vertical Ruler Line */}
                     <div className="absolute left-[52px] top-4 bottom-4 w-[1px] z-10 bg-white/10"></div>
@@ -367,12 +422,12 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                     </div>
 
                     {/* Items Ticks & Duration Bars on Ruler */}
-                    {localItems.map((item) => {
+                    {localItems.map((item, idx) => {
                       const top = getTopPercentFromMinutes(item.hour * 60 + item.min);
                       const centerTop = getTopPercentFromMinutes(item.hour * 60 + item.min + item.duration / 2);
                       const height = getHeightPercent(item.duration);
                       return (
-                        <React.Fragment key={`meta-${item.id}`}>
+                        <React.Fragment key={`meta-${item.id}-${idx}`}>
                           <motion.div
                             style={{ top: `${centerTop}%` }}
                             className="absolute left-[50px] w-1.5 h-[2px] z-20 pointer-events-none bg-yellow-400/80 shadow-[0_0_5px_rgba(250,204,21,0.5)]"
@@ -390,11 +445,11 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                       {localItems.map((item, idx) => {
                         const absoluteCenterMin = item.hour * 60 + item.min + item.duration / 2;
                         const centerTop = getTopPercentFromMinutes(absoluteCenterMin);
-                        const isSelected = item.id === selectedId && item.type === selectedType;
+                        const isSelected = item.id === selectedId;
 
                         return (
                           <motion.div
-                            key={`${item.type}-${item.id}-${item.hour}-${item.min}`}
+                            key={`item-${item.id}-${idx}`}
                             drag="y"
                             dragConstraints={scrollRef}
                             dragElastic={0.05}
@@ -472,7 +527,7 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                                 const newTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
                                 
                                 const sorted = prev.map(it => 
-                                  it.id === item.id && it.type === item.type 
+                                  it.id === item.id 
                                     ? { ...it, time: newTime, hour: h, min: m }
                                     : it
                                 ).sort((a, b) => (a.hour * 60 + a.min) - (b.hour * 60 + b.min));
@@ -491,61 +546,67 @@ export const SchedulePlannerOverlay: React.FC<SchedulePlannerOverlayProps> = ({
                               whileHover={{ scale: 1.02 }}
                               className={`group relative w-full h-10 rounded-2xl border px-3 flex items-center gap-2 cursor-pointer transition-all shadow-md ${
                                 isSelected 
-                                  ? 'bg-yellow-500 border-yellow-400 text-slate-900 shadow-[0_10px_30px_rgba(234,179,8,0.3)]'
+                                  ? (item.type === 'festival' || item.type === 'birthday' 
+                                      ? 'bg-rose-500 border-rose-400 text-white shadow-[0_10px_30px_rgba(244,63,94,0.3)]'
+                                      : item.type === 'todo'
+                                        ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_10px_30px_rgba(16,185,129,0.3)]'
+                                        : 'bg-amber-500 border-amber-400 text-slate-900 shadow-[0_10px_30px_rgba(245,158,11,0.3)]')
                                   : 'bg-black/40 border-white/20 text-white/90 shadow-[0_4px_15px_rgba(0,0,0,0.3)] backdrop-blur-md hover:bg-black/60'
                               }`}
                             >
                                {/* Connector Line to Ruler */}
-                               <div className="absolute top-1/2 -translate-y-1/2 right-full w-4 h-[1px] opacity-40 bg-white/50" />
+                                <div className="absolute top-1/2 -translate-y-1/2 right-full w-4 h-[1px] opacity-40 bg-white/50" />
 
-                               <div className={`shrink-0 flex items-center justify-center w-6 h-6 rounded-lg ${isSelected ? 'bg-black/10' : 'bg-white/10'}`}>
-                                  {item.type === 'schedule' ? <Clock size={14} /> : <CheckSquare size={14} />}
-                               </div>
-                               
-                               <div className="flex-1 flex flex-col min-w-0">
-                                  {item.isEditing && isSelected ? (
-                                    <input 
-                                      type="text" 
-                                      autoFocus
-                                      className="bg-black/20 text-white min-w-0 w-full text-[11px] font-black border-none outline-none rounded px-1"
-                                      value={item.displayTask}
-                                      onChange={(e) => {
-                                        setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, displayTask: e.target.value } : it));
-                                      }}
-                                      onBlur={() => {
-                                        setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, isEditing: false } : it));
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, isEditing: false } : it));
-                                        }
-                                      }}
-                                    />
-                                  ) : (
-                                    <span 
-                                      className="text-[11px] font-black truncate leading-tight cursor-text"
-                                      onDoubleClick={() => {
-                                        if (isSelected) {
-                                          setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, isEditing: true } : it));
-                                        }
-                                      }}
-                                    >
-                                      {item.displayTask}
-                                    </span>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                      <span className="text-[9px] font-mono font-black italic opacity-60">{item.time}</span>
-                                      <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-slate-900/40' : 'bg-white/30'}`}></div>
-                                      <span className="text-[9px] font-bold opacity-60">{item.duration} min</span>
+                                <div className={`shrink-0 flex items-center justify-center w-6 h-6 rounded-lg ${isSelected ? 'bg-black/10' : 'bg-white/10'}`}>
+                                   {renderTypeIcon(item.type)}
+                                </div>
+                                
+                                <div className="flex-1 flex flex-col min-w-0">
+                                   {item.isEditing && isSelected ? (
+                                     <input 
+                                       type="text" 
+                                       autoFocus
+                                       className="bg-black/20 text-white min-w-0 w-full text-[11px] font-black border-none outline-none rounded px-1"
+                                       value={item.displayTask}
+                                       onChange={(e) => {
+                                         setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, displayTask: e.target.value } : it));
+                                       }}
+                                       onBlur={() => {
+                                         setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, isEditing: false } : it));
+                                       }}
+                                       onKeyDown={(e) => {
+                                         if (e.key === 'Enter') {
+                                           setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, isEditing: false } : it));
+                                         }
+                                       }}
+                                     />
+                                   ) : (
+                                     <span 
+                                       className="text-[11px] font-black truncate leading-tight cursor-text"
+                                       onDoubleClick={() => {
+                                         if (isSelected) {
+                                           setLocalItems(prev => prev.map(it => it.id === item.id ? { ...it, isEditing: true } : it));
+                                         }
+                                       }}
+                                     >
+                                       {item.displayTask}
+                                     </span>
+                                   )}
+                                   <div className="flex items-center gap-2 mt-0.5">
+                                       <span className="text-[9px] font-mono font-black italic opacity-60">{item.time}</span>
+                                       <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-slate-900/40' : 'bg-white/30'}`}></div>
+                                       <span className="text-[9px] font-bold opacity-60">
+                                         {item.type === 'todo' ? '待办' : `${item.duration} min`}
+                                       </span>
+                                   </div>
+                                </div>
+
+                                {/* Conflict Warning Indicator */}
+                                {idx > 0 && Math.abs((localItems[idx-1].hour * 60 + localItems[idx-1].min) - (item.hour * 60 + item.min)) < 15 && (
+                                  <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 rounded-full border-2 border-[#2c3e50] flex items-center justify-center z-50">
+                                      <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                                   </div>
-                               </div>
-
-                               {/* Conflict Warning Indicator */}
-                               {idx > 0 && Math.abs((localItems[idx-1].hour * 60 + localItems[idx-1].min) - (item.hour * 60 + item.min)) < 15 && (
-                                 <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 rounded-full border-2 border-[#2c3e50] flex items-center justify-center z-50">
-                                     <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                                 </div>
-                               )}
+                                )}
                             </motion.div>
                           </motion.div>
                         );
