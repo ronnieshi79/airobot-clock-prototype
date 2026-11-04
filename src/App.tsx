@@ -41,19 +41,15 @@ import {
   Headphones,
   Bell
 } from 'lucide-react';
-import { GoogleGenAI, Modality, LiveServerMessage } from "@google/genai";
 import { HomeMenu } from './components/HomeMenu';
 import { AlarmView, TimeView, useClock, TimeOverlay, AlarmOverlay, LogbookOverlay } from './clock';
 import { AetherRobot, useAether } from './airobot';
 import { useSchedule, CalendarHomeView, CalendarFlexView, CalendarListView, SchedulePlannerOverlay, CalendarReminderOverlay, getTodayInfo } from './calendar';
 import { usePodcast, PodcastHomeView, PodcastPlayerView, PodcastLibraryView, PodcastSubscribeView, PodcastOverlay } from './podcast';
-import { MainCategory, SubCategory, ScheduleItem, TodoItem, Message, AlarmItem, ActiveCard } from './types';
+import { MainCategory, SubCategory, ScheduleItem, TodoItem, Message, AlarmItem, ActiveCard, LiveServerMessage } from './types';
 import { SkeuomorphicDial } from './components/SkeuomorphicDial';
 import { FunctionalModulePlate } from './components/FunctionalModulePlate';
 import { agentService } from './services/agentService';
-
-// Initialize Gemini
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export default function App() {
   const [mainCategory, setMainCategory] = useState<MainCategory>('time');

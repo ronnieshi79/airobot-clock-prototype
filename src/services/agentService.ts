@@ -1,10 +1,10 @@
-import { GoogleGenAI, Modality } from "@google/genai";
-import { genAI } from './geminiService';
+import { LiveServerMessage } from '../types';
 
 /**
  * AgentService
  * 负责 Airobot 的意图理解、功能模块的上下文调度、以及语音控制流的抽象。
  * 将这层从 App.tsx 和 useAether 中抽离出来，使 UI 逻辑和 AI 调用解耦。
+ * 所有 Gemini API 和 Live API 调用均通过服务器端安全代理完成。
  */
 let sharedAudioContext: AudioContext | null = null;
 
@@ -19,10 +19,15 @@ function getSharedAudioContext() {
 }
 
 export class AgentService {
-  private session: any = null;
+  private ws: WebSocket | null = null;
   private currentAudioSource: AudioBufferSourceNode | null = null;
-  
-  constructor() {}
+  private isConnecting: boolean = false;
+  private liveCallbacks: {
+    onMessage?: (msg: LiveServerMessage) => void;
+    onOpen?: () => void;
+    onClose?: (event?: any) => void;
+    onError?: (error?: any) => void;
+  } = {};
 
   private ttsWarmed = false;
 
@@ -43,19 +48,19 @@ export class AgentService {
       for (let i = 0; i < len; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      
+
       const int16Array = new Int16Array(bytes.buffer);
       const audioBuffer = audioContext.createBuffer(1, int16Array.length, 24000);
       const channelData = audioBuffer.getChannelData(0);
       for (let i = 0; i < int16Array.length; i++) {
         channelData[i] = int16Array[i] / 32768.0;
       }
-      
+
       if (this.currentAudioSource) {
         this.currentAudioSource.stop();
         this.currentAudioSource.disconnect();
       }
-      
+
       const source = audioContext.createBufferSource();
       this.currentAudioSource = source;
       source.buffer = audioBuffer;
@@ -70,43 +75,43 @@ export class AgentService {
     }
   }
 
-  public async generateTextResponse(prompt: string, systemInstruction: string) {
+  public async generateTextResponse(prompt: string, systemInstruction?: string): Promise<string> {
     try {
-      const response = await Promise.race([
-        genAI.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-          config: {
-            systemInstruction,
-          }
-        }),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("LLM Request Timeout")), 15000); // 15 second timeout
-        })
-      ]);
-      
-      return response.text || "我在这里陪着你！";
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const res = await fetch('/api/gemini/generate-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, systemInstruction }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      return data.text || "我在这里陪着你！";
     } catch (e) {
       console.error("AgentService Text Generation Failed/Timeout:", e);
       return "抱歉，网络出了点状况，请稍后再试～";
     }
   }
 
-  public async generateTTS(text: string) {
+  public async generateTTS(text: string): Promise<string | null> {
     try {
-      const response = await genAI.models.generateContent({
-        model: "gemini-3.1-flash-tts-preview",
-        contents: [{ parts: [{ text }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Zephyr' },
-            },
-          },
-        },
+      const res = await fetch('/api/gemini/generate-tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voiceName: 'Zephyr' }),
       });
-      return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      return data.audio || null;
     } catch (e) {
       console.error("AgentService TTS Generation Failed/Timeout:", e);
       return null;
@@ -116,7 +121,6 @@ export class AgentService {
   public playLocalTTSFallback(text: string, onEnded?: () => void) {
     console.log("Using Browser Fallback TTS for:", text);
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      // Cancel any ongoing speech
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'zh-CN';
@@ -131,7 +135,7 @@ export class AgentService {
   }
 
   public setLiveVoiceCallbacks(callbacks: {
-    onMessage?: (msg: any) => void;
+    onMessage?: (msg: LiveServerMessage) => void;
     onOpen?: () => void;
     onClose?: (event?: any) => void;
     onError?: (error?: any) => void;
@@ -139,15 +143,11 @@ export class AgentService {
     this.liveCallbacks = { ...this.liveCallbacks, ...callbacks };
   }
 
-  private liveCallbacks: any = {};
-
-  private isConnecting: boolean = false;
-
-  // 初始化语音模式 (Live API) - 保证只有一次连接
+  // 初始化语音模式 (Live API via server WebSocket bridge) - 保证单例连接
   public async ensureLiveVoice(
-    systemInstruction: string,
+    systemInstruction?: string,
     callbacks?: {
-      onMessage?: (msg: any) => void;
+      onMessage?: (msg: LiveServerMessage) => void;
       onOpen?: () => void;
       onClose?: (event?: any) => void;
       onError?: (error?: any) => void;
@@ -156,81 +156,95 @@ export class AgentService {
     if (callbacks) {
       this.setLiveVoiceCallbacks(callbacks);
     }
-    if (this.session) {
-      return this.session; // Already connected
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      return this;
     }
     if (this.isConnecting) {
-      // Very simple poll to wait if connecting
-      while(this.isConnecting) {
+      while (this.isConnecting) {
         await new Promise(r => setTimeout(r, 100));
       }
-      return this.session;
+      return this;
     }
-    
+
     this.isConnecting = true;
-    try {
-      this.session = await genAI.live.connect({
-        model: "gemini-3.1-flash-live-preview",
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } } },
-          systemInstruction,
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
-        },
-        callbacks: {
-          onopen: () => this.liveCallbacks.onOpen?.(),
-          onmessage: (msg: any) => this.liveCallbacks.onMessage?.(msg),
-          onclose: (e: any) => {
-             this.session = null;
-             this.liveCallbacks.onClose?.(e);
-          },
-          onerror: (e: any) => {
-             this.session = null;
-             this.liveCallbacks.onError?.(e);
-          },
-        }
-      });
-    } catch (error: any) {
-      if (error?.message === 'Network error') {
-         console.log("Live API Connection failed (safe to ignore in preview):", error);
-      } else {
-         console.error("Live API Connection failed:", error);
+    return new Promise<AgentService>((resolve, reject) => {
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/live`;
+        console.log(`Connecting to Live API bridge at ${wsUrl}`);
+        const socket = new WebSocket(wsUrl);
+        this.ws = socket;
+
+        socket.onopen = () => {
+          this.isConnecting = false;
+          this.liveCallbacks.onOpen?.();
+          resolve(this);
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'open') {
+              this.liveCallbacks.onOpen?.();
+            } else if (data.type === 'close') {
+              this.liveCallbacks.onClose?.(data);
+            } else if (data.type === 'error') {
+              this.liveCallbacks.onError?.(data);
+            } else {
+              this.liveCallbacks.onMessage?.(data);
+            }
+          } catch (err) {
+            console.error('Failed to parse Live API message:', err);
+          }
+        };
+
+        socket.onclose = (event) => {
+          this.isConnecting = false;
+          this.ws = null;
+          this.liveCallbacks.onClose?.(event);
+        };
+
+        socket.onerror = (error) => {
+          this.isConnecting = false;
+          this.liveCallbacks.onError?.(error);
+          reject(error);
+        };
+      } catch (error) {
+        this.isConnecting = false;
+        console.error("Live API bridge connection failed:", error);
+        reject(error);
       }
-      throw error;
-    } finally {
-      this.isConnecting = false;
-    }
-    return this.session;
+    });
   }
 
   public async disconnectLiveVoice() {
-    if (this.session) {
-      // close connection
-      this.session.close && this.session.close();
-      this.session = null;
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch (e) {
+        // ignore
+      }
+      this.ws = null;
     }
   }
 
   public async sendText(text: string) {
-    if (this.session) {
-       try {
-         this.session.sendClientContent({
-           turns: [{ role: 'user', parts: [{ text }] }],
-           turnComplete: true
-         });
-       } catch (error) {
-         console.error('Failed to send text to Live API:', error);
-       }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify({ text }));
+      } catch (error) {
+        console.error('Failed to send text to Live API bridge:', error);
+      }
     }
   }
 
   public async sendAudio(base64Audio: string) {
-    if (this.session) {
-      this.session.sendRealtimeInput([{
-        mimeType: "audio/pcm;rate=16000",
-        data: base64Audio,
-      }]);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify({ audio: base64Audio }));
+      } catch (error) {
+        console.error('Failed to send audio to Live API bridge:', error);
+      }
     }
   }
 
@@ -238,17 +252,16 @@ export class AgentService {
   public async processHourlyChime(hour: number, schedules: any[]) {
     const todayStr = new Date().toISOString().split('T')[0];
     const todaySchedules = schedules.filter(s => s.date === todayStr);
-    
-    // 模拟获取天气等外部环境信息
+
     const mockWeather = "天气晴朗，气温24度";
-    
+
     let scheduleInfo = '';
     if (todaySchedules.length > 0) {
-      scheduleInfo = `主人今天的日程有：${todaySchedules.map(s => s.title).join('、')}。`;
+      scheduleInfo = `主人今天的日程有：${todaySchedules.map(s => s.title || s.task).join('、')}。`;
     } else {
       scheduleInfo = `主人今天暂时没有安排日程。`;
     }
-    
+
     const systemPrompt = `你是一个可爱的AI机器人助手，名为AETHER。你住在用户的拟物闹钟里。你现在是体验极佳的陪伴助理，正在进行整点报时。
 当前环境信息：时间是 ${hour} 点整。天气情况：${mockWeather}。
 日程信息：${scheduleInfo}
@@ -257,18 +270,16 @@ export class AgentService {
 
     const userPrompt = `现在是 ${hour} 点整。`;
 
-    // 1. 生成播报文字
     const aiText = await this.generateTextResponse(
-      `用户说：${userPrompt}。`, 
+      `用户说：${userPrompt}。`,
       systemPrompt
     );
 
-    // 2. 将文字生成TTS语音
     const base64Audio = await this.generateTTS(aiText);
 
     return {
       text: aiText,
-      base64Audio
+      base64Audio,
     };
   }
 }

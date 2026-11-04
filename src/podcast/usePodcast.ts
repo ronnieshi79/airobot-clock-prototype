@@ -1,7 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
-
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export interface PodcastEpisode {
   id: string;
@@ -198,17 +195,15 @@ export function usePodcast() {
       const prompt = topic 
         ? `生成一期关于“${topic}”的${textType}播客内容。要求：标题吸引人，内容详实且生动，适合5-10分钟的阅读/收听。`
         : `生成一期随机的${textType}播客内容。要求：标题吸引人，内容详实且生动，适合5-10 minutes的阅读/收听。`;
-
-      const response = await genAI.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: "你是一个专业的播客内容创作者。请生成高质量的图文播客内容。输出格式为JSON：{ \"title\": \"...\", \"summary\": \"...\", \"content\": \"...\" }",
-          responseMimeType: "application/json"
-        }
+      const res = await fetch('/api/gemini/podcast-episode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
       });
-
-      const data = JSON.parse(response.text);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
       const channelMap = {
         video: '我的DIY创作',
         audio: '每日声音电台',

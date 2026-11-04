@@ -1,68 +1,77 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+/**
+ * Client-side Gemini API service proxying calls to server-side endpoints
+ */
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
-export const getGeminiModel = (modelName: string = "gemini-2.5-flash") => {
-  return genAI.models.generateContent({
-    model: modelName,
-    contents: "", // Placeholder
-  });
-};
-
-export const generateText = async (prompt: string, systemInstruction?: string) => {
-  const response = await genAI.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
-    config: {
-      systemInstruction,
-    },
-  });
-  return response.text;
-};
-
-export const generateImage = async (prompt: string) => {
-  const response = await genAI.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [{ text: prompt }],
-    },
-  });
-  
-  if (response.candidates?.[0]?.content?.parts) {
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
-      }
+export const generateText = async (prompt: string, systemInstruction?: string): Promise<string> => {
+  try {
+    const res = await fetch('/api/gemini/generate-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, systemInstruction }),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
     }
+    const data = await res.json();
+    return data.text || '';
+  } catch (err) {
+    console.error('generateText failed:', err);
+    return '抱歉，服务暂时繁忙，请稍后再试～';
   }
-  return null;
 };
 
-export const generateTTS = async (text: string, voiceName: string = 'Zephyr') => {
-  const response = await genAI.models.generateContent({
-    model: "gemini-3.1-flash-tts-preview",
-    contents: [{ parts: [{ text }] }],
-    config: {
-      responseModalities: [Modality.AUDIO],
-      speechConfig: {
-        voiceConfig: { 
-          prebuiltVoiceConfig: { voiceName } 
-        },
-      },
-    },
-  });
-  return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+export const generateImage = async (prompt: string): Promise<string | null> => {
+  try {
+    const res = await fetch('/api/gemini/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.imageUrl || null;
+  } catch (err) {
+    console.error('generateImage failed:', err);
+    return null;
+  }
 };
 
-export const searchInfo = async (query: string) => {
-  const response = await genAI.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: `请搜索并总结关于“${query}”的最新资讯。请提供一个吸引人的标题和一段详细的资讯总结（约300字）。`,
-    config: {
-      tools: [{ googleSearch: {} }],
-    },
-  });
-  return response.text;
+export const generateTTS = async (text: string, voiceName: string = 'Zephyr'): Promise<string | null> => {
+  try {
+    const res = await fetch('/api/gemini/generate-tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voiceName }),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.audio || null;
+  } catch (err) {
+    console.error('generateTTS failed:', err);
+    return null;
+  }
+};
+
+export const searchInfo = async (query: string): Promise<string> => {
+  try {
+    const res = await fetch('/api/gemini/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    return data.text || '';
+  } catch (err) {
+    console.error('searchInfo failed:', err);
+    return '资讯搜索暂不可用，请稍后再试。';
+  }
 };
 
 export const getAiRobotPrompt = () => `
@@ -75,5 +84,3 @@ export const getAiRobotPrompt = () => `
   4. 当用户提到时间、提醒或播客时，你会表现得很兴奋。
   5. 你住在时钟里，所以你对时间非常敏感。
 `;
-
-export { genAI };

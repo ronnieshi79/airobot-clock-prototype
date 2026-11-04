@@ -109,3 +109,27 @@ export interface FocusHistoryItem {
   startTime: number;
   insight?: string;
 }
+
+export interface LiveServerMessage {
+  type?: string;
+  serverContent?: {
+    modelTurn?: {
+      parts?: Array<{
+        text?: string;
+        inlineData?: {
+          mimeType?: string;
+          data?: string;
+        };
+      }>;
+    };
+    outputTranscription?: {
+      text?: string;
+    };
+    inputTranscription?: {
+      text?: string;
+    };
+    turnComplete?: boolean;
+    interrupted?: boolean;
+  };
+  error?: any;
+}
